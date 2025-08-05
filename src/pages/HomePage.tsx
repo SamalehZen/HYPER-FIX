@@ -1,0 +1,285 @@
+import React from "react";
+import { Layout } from "../components/layout/Layout";
+import { HeroSection } from "../components/layout/HeroSection";
+import { Button } from "@/components/ui/button";
+import { ArrowRight, Cpu, Database, BarChart3, Shield, Zap, Target } from "lucide-react";
+import { useNavigate } from "../lib/router";
+
+export default function HomePage() {
+  const navigate = useNavigate();
+
+  return (
+    <Layout currentPage="home">
+      {/* Hero Section */}
+      <HeroSection
+        subtitle="Bienvenue dans L'HyperFix — Propulsez votre transformation digitale."
+        title="Optimisez vos processus avec l'intelligence artificielle."
+        description="Correction, classification, et nomenclature douanière — tout en une plateforme sécurisée."
+      >
+        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8">
+          <Button 
+            size="lg" 
+            className="group bg-[#c8b4a0] hover:bg-[#a89080] text-[#1a1d18] font-medium"
+            onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            Découvrir nos services
+            <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+          </Button>
+          <Button 
+            variant="outline" 
+            size="lg"
+            className="border-[#c8b4a0] text-[#c8b4a0] hover:bg-[#c8b4a0] hover:text-[#1a1d18]"
+            onClick={() => navigate('/service/correction-libelle')}
+          >
+            Essayer maintenant
+          </Button>
+        </div>
+      </HeroSection>
+
+      {/* Section Services */}
+      <section id="services" className="py-20 px-4">
+        <div className="container mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-primary mb-6">
+              Nos Services Intelligents
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Trois modules puissants pour optimiser votre gestion produit, 
+              alimentés par l'intelligence artificielle et vos données métier.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {/* Service 1: Correction */}
+            <div className="group relative bg-gradient-to-br from-[#2a2e26]/50 to-[#1a1d18]/50 border border-[#3a3e36]/30 rounded-2xl p-8 hover:border-[#c8b4a0]/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#c8b4a0]/5 to-transparent opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity" />
+              <div className="relative z-10">
+                <div className="bg-[#c8b4a0]/10 w-16 h-16 rounded-xl flex items-center justify-center mb-6 group-hover:bg-[#c8b4a0]/20 transition-colors">
+                  <Zap className="h-8 w-8 text-[#c8b4a0]" />
+                </div>
+                <h3 className="text-xl font-semibold text-primary mb-4">Correction de Libellés</h3>
+                <p className="text-muted-foreground mb-6">
+                  Normalisation automatique de vos libellés : suppression caractères spéciaux, 
+                  grammages, format MARQUE - NOM - GRAMMAGE.
+                </p>
+                <Button 
+                  variant="ghost" 
+                  className="group/btn text-[#c8b4a0] hover:text-[#a89080] p-0"
+                  onClick={() => navigate('/service/correction-libelle')}
+                >
+                  Essayer maintenant
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Service 2: Classification */}
+            <div className="group relative bg-gradient-to-br from-[#2a2e26]/50 to-[#1a1d18]/50 border border-[#3a3e36]/30 rounded-2xl p-8 hover:border-[#c8b4a0]/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#c8b4a0]/5 to-transparent opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity" />
+              <div className="relative z-10">
+                <div className="bg-[#c8b4a0]/10 w-16 h-16 rounded-xl flex items-center justify-center mb-6 group-hover:bg-[#c8b4a0]/20 transition-colors">
+                  <Cpu className="h-8 w-8 text-[#c8b4a0]" />
+                </div>
+                <h3 className="text-xl font-semibold text-primary mb-4">Classification CYRUS IA</h3>
+                <p className="text-muted-foreground mb-6">
+                  Classification automatique selon votre structure personnalisée : 
+                  Secteur → Rayon → Famille → Sous-famille par IA.
+                </p>
+                <Button 
+                  variant="ghost" 
+                  className="group/btn text-[#c8b4a0] hover:text-[#a89080] p-0"
+                  onClick={() => navigate('/service/classification')}
+                >
+                  Classer maintenant
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Service 3: Nomenclature */}
+            <div className="group relative bg-gradient-to-br from-[#2a2e26]/50 to-[#1a1d18]/50 border border-[#3a3e36]/30 rounded-2xl p-8 hover:border-[#c8b4a0]/30 transition-all duration-300">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#c8b4a0]/5 to-transparent opacity-0 group-hover:opacity-100 rounded-2xl transition-opacity" />
+              <div className="relative z-10">
+                <div className="bg-[#c8b4a0]/10 w-16 h-16 rounded-xl flex items-center justify-center mb-6 group-hover:bg-[#c8b4a0]/20 transition-colors">
+                  <Database className="h-8 w-8 text-[#c8b4a0]" />
+                </div>
+                <h3 className="text-xl font-semibold text-primary mb-4">Nomenclature Douanière</h3>
+                <p className="text-muted-foreground mb-6">
+                  Suggestion automatique codes douaniers 4 chiffres + calcul taxes : 
+                  TVA, TIC, taxe sanitaire selon produit.
+                </p>
+                <Button 
+                  variant="ghost" 
+                  className="group/btn text-[#c8b4a0] hover:text-[#a89080] p-0"
+                  onClick={() => navigate('/service/nomenclature-douaniere')}
+                >
+                  Calculer maintenant
+                  <ArrowRight className="ml-2 h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section Workflow */}
+      <section className="py-20 px-4 border-t border-[#3a3e36]/30">
+        <div className="container mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-primary mb-6">
+              Workflow Global Intégré
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Pipeline unifié pour un traitement automatisé complet de vos données produit
+            </p>
+          </div>
+
+          <div className="max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4 items-center">
+              <div className="text-center">
+                <div className="bg-[#c8b4a0]/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-[#c8b4a0] font-bold">1</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Libellé brut</p>
+              </div>
+              
+              <div className="hidden md:flex justify-center">
+                <ArrowRight className="h-5 w-5 text-[#c8b4a0]" />
+              </div>
+              
+              <div className="text-center">
+                <div className="bg-[#c8b4a0]/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-[#c8b4a0] font-bold">2</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Correction</p>
+              </div>
+              
+              <div className="hidden md:flex justify-center">
+                <ArrowRight className="h-5 w-5 text-[#c8b4a0]" />
+              </div>
+              
+              <div className="text-center">
+                <div className="bg-[#c8b4a0]/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-[#c8b4a0] font-bold">3</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Classification</p>
+              </div>
+              
+              <div className="hidden md:flex justify-center">
+                <ArrowRight className="h-5 w-5 text-[#c8b4a0]" />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center mt-8">
+              <div className="text-center">
+                <div className="bg-[#c8b4a0]/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-[#c8b4a0] font-bold">4</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Code douanier</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="bg-[#c8b4a0]/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-[#c8b4a0] font-bold">5</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Calcul taxes</p>
+              </div>
+              
+              <div className="text-center">
+                <div className="bg-[#c8b4a0]/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                  <span className="text-[#c8b4a0] font-bold">6</span>
+                </div>
+                <p className="text-sm text-muted-foreground">Export final</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-center mt-12">
+            <Button 
+              size="lg"
+              className="bg-[#c8b4a0] hover:bg-[#a89080] text-[#1a1d18] font-medium"
+              onClick={() => navigate('/service/correction-libelle')}
+            >
+              Commencer le workflow complet
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Section Fonctionnalités */}
+      <section className="py-20 px-4 border-t border-[#3a3e36]/30">
+        <div className="container mx-auto">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-primary mb-6">
+              Fonctionnalités Avancées
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+            <div className="text-center">
+              <div className="bg-[#c8b4a0]/10 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-6">
+                <Shield className="h-8 w-8 text-[#c8b4a0]" />
+              </div>
+              <h3 className="text-xl font-semibold text-primary mb-4">Base 97k Articles</h3>
+              <p className="text-muted-foreground">
+                Matching intelligent avec votre historique complet pour des suggestions personnalisées
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="bg-[#c8b4a0]/10 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-6">
+                <BarChart3 className="h-8 w-8 text-[#c8b4a0]" />
+              </div>
+              <h3 className="text-xl font-semibold text-primary mb-4">Analytics & Alertes</h3>
+              <p className="text-muted-foreground">
+                Tableaux de bord temps réel, alertes intelligentes et rapports automatisés
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="bg-[#c8b4a0]/10 w-16 h-16 rounded-xl flex items-center justify-center mx-auto mb-6">
+                <Target className="h-8 w-8 text-[#c8b4a0]" />
+              </div>
+              <h3 className="text-xl font-semibold text-primary mb-4">Formation Assistée</h3>
+              <p className="text-muted-foreground">
+                Interface guidée et formation personnalisée pour tous les utilisateurs
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section CTA finale */}
+      <section className="py-20 px-4 border-t border-[#3a3e36]/30">
+        <div className="container mx-auto text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-primary mb-6">
+            Prêt à transformer vos processus ?
+          </h2>
+          <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            Découvrez comment L'HyperFix peut optimiser votre gestion produit 
+            dès aujourd'hui avec l'intelligence artificielle.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button 
+              size="lg"
+              className="bg-[#c8b4a0] hover:bg-[#a89080] text-[#1a1d18] font-medium"
+              onClick={() => navigate('/service/correction-libelle')}
+            >
+              Commencer maintenant
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="lg"
+              className="border-[#c8b4a0] text-[#c8b4a0] hover:bg-[#c8b4a0] hover:text-[#1a1d18]"
+              onClick={() => navigate('/login')}
+            >
+              Se connecter
+            </Button>
+          </div>
+        </div>
+      </section>
+    </Layout>
+  );
+}

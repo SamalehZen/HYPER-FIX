@@ -1,0 +1,385 @@
+import React, { useState, useCallback } from 'react';
+import { Button } from '../ui/button';
+import { Textarea } from '../ui/textarea';
+import { Input } from '../ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Badge } from '../ui/badge';
+import { Progress } from '../ui/progress';
+import { Separator } from '../ui/separator';
+import { Download, Upload, Copy, Check, X, RefreshCw, FileText } from 'lucide-react';
+import { correctLabel, correctLabels, exportCorrections, type CorrectionResult } from '../../lib/correction';
+import { saveCorrection } from '../../lib/database';
+
+const CorrectionService: React.FC = () => {
+  const [inputText, setInputText] = useState('');
+  const [results, setResults] = useState<CorrectionResult[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [selectedResults, setSelectedResults] = useState<Set<number>>(new Set());
+  
+  // Traitement des libellés individuels ou par lot
+  const handleCorrection = useCallback(async () => {
+    if (!inputText.trim()) return;
+    
+    setIsProcessing(true);
+    
+    try {
+      // Séparer les lignes pour traitement par lot
+      const labels = inputText
+        .split('\n')
+        .map(line => line.trim())
+        .filter(line => line.length > 0);
+      
+      const correctionResults = correctLabels(labels);
+      setResults(correctionResults);
+      
+      // Sauvegarder automatiquement en base
+      for (const result of correctionResults) {
+        try {
+          await saveCorrection({
+            original_label: result.original,
+            corrected_label: result.corrected,
+            correction_rules: { rules: result.rules },
+            confidence: result.confidence,
+            validated: false,
+            created_by: 'user'
+          });
+        } catch (error) {
+          console.error('Erreur sauvegarde:', error);
+        }
+      }
+      
+    } catch (error) {
+      console.error('Erreur lors de la correction:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [inputText]);
+  
+  // Validation manuelle d'un résultat
+  const handleValidation = useCallback(async (index: number, isValid: boolean) => {
+    const result = results[index];
+    if (!result) return;
+    
+    try {
+      // Mettre à jour en base avec le statut validé
+      await saveCorrection({
+        original_label: result.original,
+        corrected_label: result.corrected,
+        correction_rules: { rules: result.rules },
+        confidence: isValid ? 100 : 0,
+        validated: true,
+        created_by: 'user'
+      });
+      
+      // Mettre à jour l'état local
+      const updatedResults = [...results];
+      updatedResults[index] = {
+        ...result,
+        confidence: isValid ? 100 : 0
+      };
+      setResults(updatedResults);
+      
+    } catch (error) {
+      console.error('Erreur validation:', error);
+    }
+  }, [results]);
+  
+  // Copier les résultats dans le presse-papiers
+  const handleCopyResults = useCallback(() => {
+    const selectedIndices = Array.from(selectedResults);
+    const selectedData = selectedIndices.length > 0 
+      ? results.filter((_, index) => selectedIndices.includes(index))
+      : results;
+    
+    const textToCopy = selectedData
+      .map(result => result.corrected)
+      .join('\n');
+    
+    navigator.clipboard.writeText(textToCopy);
+  }, [results, selectedResults]);
+  
+  // Export CSV
+  const handleExport = useCallback(() => {
+    const selectedIndices = Array.from(selectedResults);
+    const dataToExport = selectedIndices.length > 0 
+      ? results.filter((_, index) => selectedIndices.includes(index))
+      : results;
+    
+    const csvContent = exportCorrections(dataToExport, 'csv');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `corrections-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+    
+    URL.revokeObjectURL(url);
+  }, [results, selectedResults]);
+  
+  // Sélection des résultats
+  const toggleSelection = useCallback((index: number) => {
+    const newSelection = new Set(selectedResults);
+    if (newSelection.has(index)) {
+      newSelection.delete(index);
+    } else {
+      newSelection.add(index);
+    }
+    setSelectedResults(newSelection);
+  }, [selectedResults]);
+  
+  const selectAll = useCallback(() => {
+    if (selectedResults.size === results.length) {
+      setSelectedResults(new Set());
+    } else {
+      setSelectedResults(new Set(results.map((_, index) => index)));
+    }
+  }, [results, selectedResults]);
+  
+  // Import de fichier
+  const handleFileImport = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setInputText(content);
+    };
+    reader.readAsText(file);
+  }, []);
+  
+  // Statistiques
+  const stats = {
+    total: results.length,
+    highConfidence: results.filter(r => r.confidence >= 80).length,
+    mediumConfidence: results.filter(r => r.confidence >= 50 && r.confidence < 80).length,
+    lowConfidence: results.filter(r => r.confidence < 50).length
+  };
+  
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-primary">Correction de Libellés</h1>
+          <p className="text-muted-foreground">
+            Correction automatique et normalisation des libellés produits
+          </p>
+        </div>
+        
+        {results.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleCopyResults}>
+              <Copy className="h-4 w-4 mr-2" />
+              Copier
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
+        )}
+      </div>
+      
+      {/* Zone de saisie */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Saisie des Libellés
+          </CardTitle>
+          <CardDescription>
+            Saisissez les libellés à corriger (un par ligne) ou importez un fichier
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div className="lg:col-span-3">
+              <Textarea
+                placeholder="Saisissez vos libellés ici, un par ligne...&#10;Exemple:&#10;yaour.grec danon 500g&#10;eau mineral evian 1.5L&#10;pain de.mie haribo 400gr"
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                rows={6}
+                className="resize-none"
+              />
+            </div>
+            
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="file-import" className="block text-sm font-medium mb-2">
+                  Import Fichier
+                </label>
+                <Input
+                  id="file-import"
+                  type="file"
+                  accept=".txt,.csv"
+                  onChange={handleFileImport}
+                  className="text-sm"
+                />
+              </div>
+              
+              <Button 
+                onClick={handleCorrection}
+                disabled={!inputText.trim() || isProcessing}
+                className="w-full"
+              >
+                {isProcessing ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Traitement...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Corriger
+                  </>
+                )}
+              </Button>
+              
+              {inputText.trim() && (
+                <p className="text-xs text-muted-foreground">
+                  {inputText.split('\n').filter(line => line.trim()).length} libellé(s) à traiter
+                </p>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      {/* Statistiques */}
+      {results.length > 0 && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">{stats.total}</div>
+                <div className="text-sm text-muted-foreground">Total</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-green-600">{stats.highConfidence}</div>
+                <div className="text-sm text-muted-foreground">Haute confiance</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-yellow-600">{stats.mediumConfidence}</div>
+                <div className="text-sm text-muted-foreground">Moyenne confiance</div>
+              </div>
+              <div className="text-center">
+                <div className="text-2xl font-bold text-red-600">{stats.lowConfidence}</div>
+                <div className="text-sm text-muted-foreground">Faible confiance</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
+      {/* Résultats */}
+      {results.length > 0 && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Résultats de Correction</CardTitle>
+              <div className="flex items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={selectAll}>
+                  {selectedResults.size === results.length ? 'Désélectionner' : 'Tout sélectionner'}
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  {selectedResults.size} sélectionné(s)
+                </span>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[50px]">
+                      <input
+                        type="checkbox"
+                        checked={selectedResults.size === results.length && results.length > 0}
+                        onChange={selectAll}
+                      />
+                    </TableHead>
+                    <TableHead>Libellé Original</TableHead>
+                    <TableHead>Libellé Corrigé</TableHead>
+                    <TableHead>Confiance</TableHead>
+                    <TableHead>Règles</TableHead>
+                    <TableHead className="w-[120px]">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {results.map((result, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <input
+                          type="checkbox"
+                          checked={selectedResults.has(index)}
+                          onChange={() => toggleSelection(index)}
+                        />
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">
+                        {result.original}
+                      </TableCell>
+                      <TableCell className="font-mono text-sm font-medium">
+                        {result.corrected}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress value={result.confidence} className="w-16" />
+                          <Badge variant={
+                            result.confidence >= 80 ? 'default' :
+                            result.confidence >= 50 ? 'secondary' : 'destructive'
+                          }>
+                            {result.confidence}%
+                          </Badge>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {result.rules.slice(0, 2).map(rule => (
+                            <Badge key={rule} variant="outline" className="text-xs">
+                              {rule.replace(/_/g, ' ')}
+                            </Badge>
+                          ))}
+                          {result.rules.length > 2 && (
+                            <Badge variant="outline" className="text-xs">
+                              +{result.rules.length - 2}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleValidation(index, true)}
+                            className="text-green-600 hover:text-green-700 h-8 w-8 p-0"
+                          >
+                            <Check className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleValidation(index, false)}
+                            className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+};
+
+export default CorrectionService;
