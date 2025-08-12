@@ -5,6 +5,7 @@ import CorrectionPage from "./pages/CorrectionPage";
 import ClassificationPage from "./pages/ClassificationPage";
 import NomenclaturePage from "./pages/NomenclaturePage";
 import WorkflowPage from "./pages/WorkflowPage";
+import ComingSoonPage from "./pages/ComingSoonPage";
 // Import des autres pages (à créer)
 // import LoginPage from "./pages/LoginPage";
 // import DashboardPage from "./pages/DashboardPage";
@@ -35,18 +36,18 @@ const routes = [
     path: "/workflow",
     component: WorkflowPage,
     title: "Workflow Intégré - L'HyperFix"
-  }
+  },
   // Autres routes à ajouter progressivement
   // {
   //   path: "/login",
   //   component: LoginPage,
   //   title: "Connexion - L'HyperFix"
   // },
-  // {
-  //   path: "/dashboard",
-  //   component: DashboardPage,
-  //   title: "Dashboard - L'HyperFix"
-  // }
+  {
+    path: "/dashboard",
+    component: ComingSoonPage,
+    title: "Dashboard - L'HyperFix"
+  }
 ];
 
 export default function App() {
