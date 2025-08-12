@@ -26,7 +26,6 @@ export function SizableNavigation({ currentPage = "home" }: { currentPage?: stri
     { name: "Correction", link: "/service/correction-libelle", id: "correction" },
     { name: "Classification", link: "/service/classification", id: "classification" },
     { name: "Nomenclature", link: "/service/nomenclature-douaniere", id: "nomenclature" },
-    { name: "Dashboard", link: "/dashboard", id: "dashboard" },
   ];
 
   const handleNavigation = (link: string) => {
