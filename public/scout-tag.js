@@ -3,7 +3,7 @@
   const tag = document.createElement("div");
   tag.id = "built-by-scout";
   tag.innerHTML =
-    '<a href="https://scout.new" target="_blank" rel="noopener noreferrer">Built by Scout</a>';
+    '<a href="https://samaleh.com" target="_blank" rel="noopener noreferrer">Built by Arka</a>';
 
   // Style the tag
   const style = document.createElement("style");
