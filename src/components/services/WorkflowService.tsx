@@ -8,6 +8,8 @@ import { Progress } from '../ui/progress';
 import { Separator } from '../ui/separator';
 import { ArrowRight, Play, Download, Copy, RefreshCw, CheckCircle, AlertCircle, Zap, Brain, Calculator } from 'lucide-react';
 import { correctLabel } from '../../lib/correction';
+import { useTheme } from '../../lib/theme-context';
+import * as XLSX from 'xlsx';
 
 interface WorkflowStep {
   id: string;
@@ -35,6 +37,7 @@ interface WorkflowResult {
 }
 
 const WorkflowService: React.FC = () => {
+  const { theme } = useTheme();
   const [inputText, setInputText] = useState('');
   const [results, setResults] = useState<WorkflowResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -307,6 +310,10 @@ const WorkflowService: React.FC = () => {
               <Download className="h-4 w-4 mr-2" />
               CSV
             </Button>
+            <Button variant="outline" size="sm" onClick={() => exportResultsXlsx()}>
+              <Download className="h-4 w-4 mr-2" />
+              XLSX
+            </Button>
             <Button variant="outline" size="sm" onClick={() => exportResults('json')}>
               <Download className="h-4 w-4 mr-2" />
               JSON
@@ -371,10 +378,10 @@ const WorkflowService: React.FC = () => {
                 return (
                   <div key={step.id} className="flex items-center space-x-3">
                     <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                      step.status === 'completed' ? 'bg-green-600' :
-                      step.status === 'processing' ? 'bg-blue-600' :
-                      step.status === 'error' ? 'bg-red-600' :
-                      'bg-gray-600'
+                      step.status === 'completed' ? (theme === 'dark' ? 'bg-green-600' : 'bg-green-700') :
+                      step.status === 'processing' ? (theme === 'dark' ? 'bg-blue-600' : 'bg-blue-700') :
+                      step.status === 'error' ? (theme === 'dark' ? 'bg-red-600' : 'bg-red-700') :
+                      theme === 'dark' ? 'bg-gray-600' : 'bg-gray-700'
                     }`}>
                       {step.status === 'completed' ? (
                         <CheckCircle className="h-5 w-5 text-white" />
@@ -388,9 +395,9 @@ const WorkflowService: React.FC = () => {
                     </div>
                     <div className="flex-1">
                       <p className={`text-sm font-medium ${
-                        step.status === 'completed' ? 'text-green-600' :
-                        step.status === 'processing' ? 'text-blue-600' :
-                        step.status === 'error' ? 'text-red-600' :
+                        step.status === 'completed' ? (theme === 'dark' ? 'text-green-600' : 'text-green-700') :
+                        step.status === 'processing' ? (theme === 'dark' ? 'text-blue-600' : 'text-blue-700') :
+                        step.status === 'error' ? (theme === 'dark' ? 'text-red-600' : 'text-red-700') :
                         'text-muted-foreground'
                       }`}>
                         {step.name}
@@ -423,19 +430,19 @@ const WorkflowService: React.FC = () => {
                 <div className="text-sm text-muted-foreground">Éléments traités</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{stats.avgCorrectionConfidence}%</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-green-600' : 'text-green-700'}`}>{stats.avgCorrectionConfidence}%</div>
                 <div className="text-sm text-muted-foreground">Confiance correction</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{stats.avgClassificationConfidence}%</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-blue-600' : 'text-blue-700'}`}>{stats.avgClassificationConfidence}%</div>
                 <div className="text-sm text-muted-foreground">Confiance classification</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{stats.avgProcessingTime}ms</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-purple-600' : 'text-purple-700'}`}>{stats.avgProcessingTime}ms</div>
                 <div className="text-sm text-muted-foreground">Temps moyen</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-orange-600">{stats.totalTaxes.toFixed(2)}€</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-orange-600' : 'text-orange-700'}`}>{stats.totalTaxes.toFixed(2)}€</div>
                 <div className="text-sm text-muted-foreground">Total taxes</div>
               </div>
             </div>
@@ -495,7 +502,7 @@ const WorkflowService: React.FC = () => {
                           <div className="text-sm">TVA: {result.tva}%</div>
                           <div className="text-sm">TIC: {result.tic}€</div>
                           <div className="text-sm">Sanit.: {result.taxe_sanitaire}€</div>
-                          <div className="font-medium text-green-600">Total: {result.total_taxes}€</div>
+                          <div className={`font-medium ${theme === 'dark' ? 'text-green-600' : 'text-green-700'}`}>Total: {result.total_taxes}€</div>
                         </div>
                       </TableCell>
                       <TableCell>

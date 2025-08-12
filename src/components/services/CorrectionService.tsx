@@ -10,8 +10,11 @@ import { Separator } from '../ui/separator';
 import { Download, Upload, Copy, Check, X, RefreshCw, FileText } from 'lucide-react';
 import { correctLabel, correctLabels, correctLabelsPipeline, exportCorrections, type CorrectionResult } from '../../lib/correction';
 import { saveCorrection } from '../../lib/database';
+import { useTheme } from '../../lib/theme-context';
+import * as XLSX from 'xlsx';
 
 const CorrectionService: React.FC = () => {
+  const { theme } = useTheme();
   const [inputText, setInputText] = useState('');
   const [results, setResults] = useState<CorrectionResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -102,7 +105,7 @@ const CorrectionService: React.FC = () => {
   // Export CSV
   const handleExport = useCallback(() => {
     const selectedIndices = Array.from(selectedResults);
-    const dataToExport = selectedIndices.length > 0 
+    const dataToExport = selectedIndices.length > 0
       ? results.filter((_, index) => selectedIndices.includes(index))
       : results;
     
@@ -116,6 +119,33 @@ const CorrectionService: React.FC = () => {
     link.click();
     
     URL.revokeObjectURL(url);
+  }, [results, selectedResults]);
+  
+  // Export XLSX
+  const handleExportXlsx = useCallback(() => {
+    const selectedIndices = Array.from(selectedResults);
+    const dataToExport = selectedIndices.length > 0
+      ? results.filter((_, index) => selectedIndices.includes(index))
+      : results;
+    
+    // Create worksheet data
+    const worksheetData = [
+      ['Libellé Original', 'Libellé Corrigé', 'Confiance (%)', 'Règles Appliquées'],
+      ...dataToExport.map(result => [
+        result.original,
+        result.corrected,
+        result.confidence,
+        result.rules.join(', ')
+      ])
+    ];
+    
+    // Create workbook
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Corrections');
+    
+    // Export to file
+    XLSX.writeFile(workbook, `corrections-${new Date().toISOString().split('T')[0]}.xlsx`);
   }, [results, selectedResults]);
   
   // Sélection des résultats
@@ -142,12 +172,44 @@ const CorrectionService: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      setInputText(content);
-    };
-    reader.readAsText(file);
+    const fileName = file.name.toLowerCase();
+    
+    if (fileName.endsWith('.xlsx')) {
+      // Handle XLSX file
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          // Get the first worksheet
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          
+          // Convert to JSON
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          // Convert to text format (assuming first column contains the labels)
+          const textContent = jsonData
+            .filter((row): row is any[] => Array.isArray(row) && row.length > 0 && row[0])
+            .map(row => row[0])
+            .join('\n');
+          
+          setInputText(textContent);
+        } catch (error) {
+          console.error('Error parsing XLSX file:', error);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // Handle TXT/CSV files
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        setInputText(content);
+      };
+      reader.readAsText(file);
+    }
   }, []);
   
   // Statistiques
@@ -178,6 +240,10 @@ const CorrectionService: React.FC = () => {
             <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-4 w-4 mr-2" />
               Export CSV
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => handleExportXlsx()}>
+              <Download className="h-4 w-4 mr-2" />
+              Export XLSX
             </Button>
           </div>
         )}
@@ -214,7 +280,7 @@ const CorrectionService: React.FC = () => {
                 <Input
                   id="file-import"
                   type="file"
-                  accept=".txt,.csv"
+                  accept=".txt,.csv,.xlsx"
                   onChange={handleFileImport}
                   className="text-sm"
                 />
@@ -258,15 +324,15 @@ const CorrectionService: React.FC = () => {
                 <div className="text-sm text-muted-foreground">Total</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{stats.highConfidence}</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-green-600' : 'text-green-700'}`}>{stats.highConfidence}</div>
                 <div className="text-sm text-muted-foreground">Haute confiance</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">{stats.mediumConfidence}</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-yellow-600' : 'text-yellow-700'}`}>{stats.mediumConfidence}</div>
                 <div className="text-sm text-muted-foreground">Moyenne confiance</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{stats.lowConfidence}</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-red-600' : 'text-red-700'}`}>{stats.lowConfidence}</div>
                 <div className="text-sm text-muted-foreground">Faible confiance</div>
               </div>
             </div>
@@ -356,7 +422,7 @@ const CorrectionService: React.FC = () => {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleValidation(index, true)}
-                            className="text-green-600 hover:text-green-700 h-8 w-8 p-0"
+                            className={`${theme === 'dark' ? 'text-green-600 hover:text-green-700' : 'text-green-700 hover:text-green-800'} h-8 w-8 p-0`}
                           >
                             <Check className="h-4 w-4" />
                           </Button>
@@ -364,7 +430,7 @@ const CorrectionService: React.FC = () => {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleValidation(index, false)}
-                            className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                            className={`${theme === 'dark' ? 'text-red-600 hover:text-red-700' : 'text-red-700 hover:text-red-800'} h-8 w-8 p-0`}
                           >
                             <X className="h-4 w-4" />
                           </Button>

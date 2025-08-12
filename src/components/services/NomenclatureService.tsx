@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Badge } from '../ui/badge';
 import { Calculator, Search, Copy, FileText, Euro, Receipt } from 'lucide-react';
+import { useTheme } from '../../lib/theme-context';
 
 interface NomenclatureResult {
   libelle: string;
@@ -133,6 +134,7 @@ const NOMENCLATURE_DB = [
 ];
 
 const NomenclatureService: React.FC = () => {
+  const { theme } = useTheme();
   const [searchTerm, setSearchTerm] = useState('');
   const [results, setResults] = useState<NomenclatureResult[]>([]);
   const [selectedCode, setSelectedCode] = useState('');
@@ -456,7 +458,7 @@ const NomenclatureService: React.FC = () => {
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="default" className="bg-green-600">
+                          <Badge variant="default" className={theme === 'dark' ? 'bg-green-600' : 'bg-green-700'}>
                             {totals.total.toFixed(2)}€
                           </Badge>
                         </TableCell>

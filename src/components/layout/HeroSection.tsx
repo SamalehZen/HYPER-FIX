@@ -1,5 +1,6 @@
 "use client";
 import React, { useEffect, useRef, ReactNode } from "react";
+import { useTheme } from "../../lib/theme-context";
 
 const colors = {
   50: "#f8f7f5",
@@ -23,14 +24,15 @@ interface HeroSectionProps {
   compact?: boolean;
 }
 
-export function HeroSection({ 
-  title, 
-  subtitle, 
-  description, 
-  children, 
+export function HeroSection({
+  title,
+  subtitle,
+  description,
+  children,
   showBackground = true,
-  compact = false 
+  compact = false
 }: HeroSectionProps) {
+  const { theme } = useTheme();
   const gradientRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -61,7 +63,9 @@ export function HeroSection({
     // Word hover effects
     words.forEach((word) => {
       word.addEventListener("mouseenter", () => {
-        word.style.textShadow = "0 0 20px rgba(200, 180, 160, 0.5)";
+        word.style.textShadow = theme === 'dark'
+          ? "0 0 20px rgba(200, 180, 160, 0.5)"
+          : "0 0 20px rgba(26, 29, 24, 0.5)";
       });
       word.addEventListener("mouseleave", () => {
         word.style.textShadow = "none";
@@ -76,7 +80,9 @@ export function HeroSection({
       ripple.style.top = e.clientY + "px";
       ripple.style.width = "4px";
       ripple.style.height = "4px";
-      ripple.style.background = "rgba(200, 180, 160, 0.6)";
+      ripple.style.background = theme === 'dark'
+        ? "rgba(200, 180, 160, 0.6)"
+        : "rgba(26, 29, 24, 0.6)";
       ripple.style.borderRadius = "50%";
       ripple.style.transform = "translate(-50%, -50%)";
       ripple.style.pointerEvents = "none";
@@ -108,9 +114,15 @@ export function HeroSection({
     };
   }, []);
 
+  const backgroundClass = theme === 'dark'
+    ? "bg-gradient-to-br from-[#1a1d18] via-black to-[#2a2e26]"
+    : "bg-gradient-to-br from-[#f8f7f5] via-[#e6e1d7] to-[#c8b4a0]";
+    
+  const textColorClass = theme === 'dark' ? "text-[#e6e1d7]" : "text-[#1a1d18]";
+
   return (
     <div
-      className={`${compact ? 'min-h-[60vh]' : 'min-h-screen'} bg-gradient-to-br from-[#1a1d18] via-black to-[#2a2e26] text-[#e6e1d7] font-primary overflow-hidden relative w-full`}
+      className={`${compact ? 'min-h-[60vh]' : 'min-h-screen'} ${backgroundClass} ${textColorClass} font-primary overflow-hidden relative w-full`}
     >
       {/* Background Grid */}
       {showBackground && (
@@ -121,7 +133,7 @@ export function HeroSection({
                 <path
                   d="M 60 0 L 0 0 0 60"
                   fill="none"
-                  stroke="rgba(200,180,160,0.08)"
+                  stroke={theme === 'dark' ? "rgba(200,180,160,0.08)" : "rgba(26,29,24,0.08)"}
                   strokeWidth="0.5"
                 />
               </pattern>
@@ -129,10 +141,38 @@ export function HeroSection({
             <rect width="100%" height="100%" fill="url(#grid)" />
             
             {/* Animated grid lines */}
-            <line x1="0" y1="20%" x2="100%" y2="20%" className="grid-line" style={{ animationDelay: "0.5s" }} />
-            <line x1="0" y1="80%" x2="100%" y2="80%" className="grid-line" style={{ animationDelay: "1s" }} />
-            <line x1="20%" y1="0" x2="20%" y2="100%" className="grid-line" style={{ animationDelay: "1.5s" }} />
-            <line x1="80%" y1="0" x2="80%" y2="100%" className="grid-line" style={{ animationDelay: "2s" }} />
+            <line
+              x1="0" y1="20%" x2="100%" y2="20%"
+              className="grid-line"
+              style={{
+                animationDelay: "0.5s",
+                stroke: theme === 'dark' ? "rgba(200, 180, 160, 0.15)" : "rgba(26, 29, 24, 0.15)"
+              }}
+            />
+            <line
+              x1="0" y1="80%" x2="100%" y2="80%"
+              className="grid-line"
+              style={{
+                animationDelay: "1s",
+                stroke: theme === 'dark' ? "rgba(200, 180, 160, 0.15)" : "rgba(26, 29, 24, 0.15)"
+              }}
+            />
+            <line
+              x1="20%" y1="0" x2="20%" y2="100%"
+              className="grid-line"
+              style={{
+                animationDelay: "1.5s",
+                stroke: theme === 'dark' ? "rgba(200, 180, 160, 0.15)" : "rgba(26, 29, 24, 0.15)"
+              }}
+            />
+            <line
+              x1="80%" y1="0" x2="80%" y2="100%"
+              className="grid-line"
+              style={{
+                animationDelay: "2s",
+                stroke: theme === 'dark' ? "rgba(200, 180, 160, 0.15)" : "rgba(26, 29, 24, 0.15)"
+              }}
+            />
             
             {/* Center lines */}
             <line
@@ -141,7 +181,11 @@ export function HeroSection({
               x2="50%"
               y2="100%"
               className="grid-line"
-              style={{ animationDelay: "2.5s", opacity: 0.05 }}
+              style={{
+                animationDelay: "2.5s",
+                opacity: 0.05,
+                stroke: theme === 'dark' ? "rgba(200, 180, 160, 0.15)" : "rgba(26, 29, 24, 0.15)"
+              }}
             />
             <line
               x1="0"
@@ -149,48 +193,119 @@ export function HeroSection({
               x2="100%"
               y2="50%"
               className="grid-line"
-              style={{ animationDelay: "3s", opacity: 0.05 }}
+              style={{
+                animationDelay: "3s",
+                opacity: 0.05,
+                stroke: theme === 'dark' ? "rgba(200, 180, 160, 0.15)" : "rgba(26, 29, 24, 0.15)"
+              }}
             />
             
             {/* Corner dots */}
-            <circle cx="20%" cy="20%" r="2" className="detail-dot" style={{ animationDelay: "3s" }} />
-            <circle cx="80%" cy="20%" r="2" className="detail-dot" style={{ animationDelay: "3.2s" }} />
-            <circle cx="20%" cy="80%" r="2" className="detail-dot" style={{ animationDelay: "3.4s" }} />
-            <circle cx="80%" cy="80%" r="2" className="detail-dot" style={{ animationDelay: "3.6s" }} />
-            <circle cx="50%" cy="50%" r="1.5" className="detail-dot" style={{ animationDelay: "4s" }} />
+            <circle
+              cx="20%" cy="20%" r="2"
+              className="detail-dot"
+              style={{
+                animationDelay: "3s",
+                fill: theme === 'dark' ? "rgba(200, 180, 160, 0.4)" : "rgba(26, 29, 24, 0.4)"
+              }}
+            />
+            <circle
+              cx="80%" cy="20%" r="2"
+              className="detail-dot"
+              style={{
+                animationDelay: "3.2s",
+                fill: theme === 'dark' ? "rgba(200, 180, 160, 0.4)" : "rgba(26, 29, 24, 0.4)"
+              }}
+            />
+            <circle
+              cx="20%" cy="80%" r="2"
+              className="detail-dot"
+              style={{
+                animationDelay: "3.4s",
+                fill: theme === 'dark' ? "rgba(200, 180, 160, 0.4)" : "rgba(26, 29, 24, 0.4)"
+              }}
+            />
+            <circle
+              cx="80%" cy="80%" r="2"
+              className="detail-dot"
+              style={{
+                animationDelay: "3.6s",
+                fill: theme === 'dark' ? "rgba(200, 180, 160, 0.4)" : "rgba(26, 29, 24, 0.4)"
+              }}
+            />
+            <circle
+              cx="50%" cy="50%" r="1.5"
+              className="detail-dot"
+              style={{
+                animationDelay: "4s",
+                fill: theme === 'dark' ? "rgba(200, 180, 160, 0.4)" : "rgba(26, 29, 24, 0.4)"
+              }}
+            />
           </svg>
 
           {/* Corner elements */}
           <div className="corner-element top-8 left-8" style={{ animationDelay: "4s" }}>
             <div
               className="absolute top-0 left-0 w-2 h-2 opacity-30"
-              style={{ background: colors[200] }}
+              style={{ background: theme === 'dark' ? colors[200] : colors[700] }}
             ></div>
           </div>
           <div className="corner-element top-8 right-8" style={{ animationDelay: "4.2s" }}>
             <div
               className="absolute top-0 right-0 w-2 h-2 opacity-30"
-              style={{ background: colors[200] }}
+              style={{ background: theme === 'dark' ? colors[200] : colors[700] }}
             ></div>
           </div>
           <div className="corner-element bottom-8 left-8" style={{ animationDelay: "4.4s" }}>
             <div
               className="absolute bottom-0 left-0 w-2 h-2 opacity-30"
-              style={{ background: colors[200] }}
+              style={{ background: theme === 'dark' ? colors[200] : colors[700] }}
             ></div>
           </div>
           <div className="corner-element bottom-8 right-8" style={{ animationDelay: "4.6s" }}>
             <div
               className="absolute bottom-0 right-0 w-2 h-2 opacity-30"
-              style={{ background: colors[200] }}
+              style={{ background: theme === 'dark' ? colors[200] : colors[700] }}
             ></div>
           </div>
 
           {/* Floating elements */}
-          <div className="floating-element" style={{ top: "25%", left: "15%", animationDelay: "5s" }}></div>
-          <div className="floating-element" style={{ top: "60%", left: "85%", animationDelay: "5.5s" }}></div>
-          <div className="floating-element" style={{ top: "40%", left: "10%", animationDelay: "6s" }}></div>
-          <div className="floating-element" style={{ top: "75%", left: "90%", animationDelay: "6.5s" }}></div>
+          <div
+            className="floating-element"
+            style={{
+              top: "25%",
+              left: "15%",
+              animationDelay: "5s",
+              background: theme === 'dark' ? "rgba(200, 180, 160, 0.2)" : "rgba(26, 29, 24, 0.2)"
+            }}
+          ></div>
+          <div
+            className="floating-element"
+            style={{
+              top: "60%",
+              left: "85%",
+              animationDelay: "5.5s",
+              background: theme === 'dark' ? "rgba(200, 180, 160, 0.2)" : "rgba(26, 29, 24, 0.2)"
+            }}
+          ></div>
+          <div
+            className="floating-element"
+            style={{
+              top: "40%",
+              left: "10%",
+              animationDelay: "6s",
+              background: theme === 'dark' ? "rgba(200, 180, 160, 0.2)" : "rgba(26, 29, 24, 0.2)"
+            }}
+          ></div>
+          <div
+            className="floating-element"
+            style={{
+              top: "75%",
+              left: "90%",
+              animationDelay: "6.5s",
+              background: theme === 'dark' ? "rgba(200, 180, 160, 0.2)" : "rgba(26, 29, 24, 0.2)"
+            }}
+          ></div>
         </>
       )}
 
@@ -200,7 +315,7 @@ export function HeroSection({
             <div className="mb-8">
               <h2
                 className="text-xs md:text-sm font-mono font-light uppercase tracking-[0.2em] opacity-80"
-                style={{ color: colors[200] }}
+                style={{ color: theme === 'dark' ? colors[200] : colors[700] }}
               >
                 <span className="word" data-delay="0">
                   {subtitle}
@@ -209,7 +324,9 @@ export function HeroSection({
               <div
                 className="mt-4 w-16 h-px opacity-30 mx-auto"
                 style={{
-                  background: `linear-gradient(to right, transparent, ${colors[200]}, transparent)`,
+                  background: theme === 'dark'
+                    ? `linear-gradient(to right, transparent, ${colors[200]}, transparent)`
+                    : `linear-gradient(to right, transparent, ${colors[700]}, transparent)`,
                 }}
               ></div>
             </div>
@@ -219,7 +336,7 @@ export function HeroSection({
             <div className="mb-8">
               <h1
                 className={`${compact ? 'text-2xl md:text-4xl lg:text-5xl' : 'text-3xl md:text-5xl lg:text-6xl'} font-extralight leading-tight tracking-tight`}
-                style={{ color: colors[50] }}
+                style={{ color: theme === 'dark' ? colors[50] : colors[900] }}
               >
                 <span className="word" data-delay="200">
                   {title}
@@ -232,7 +349,7 @@ export function HeroSection({
             <div className="mb-8">
               <p
                 className={`${compact ? 'text-base md:text-lg' : 'text-lg md:text-xl'} font-light leading-relaxed max-w-3xl mx-auto`}
-                style={{ color: colors[200] }}
+                style={{ color: theme === 'dark' ? colors[200] : colors[700] }}
               >
                 <span className="word" data-delay="400">
                   {description}
@@ -254,7 +371,9 @@ export function HeroSection({
         ref={gradientRef}
         className="fixed pointer-events-none w-96 h-96 rounded-full blur-3xl transition-all duration-500 ease-out opacity-0"
         style={{
-          background: `radial-gradient(circle, ${colors[500]}0D 0%, transparent 100%)`,
+          background: theme === 'dark'
+            ? `radial-gradient(circle, ${colors[500]}0D 0%, transparent 100%)`
+            : `radial-gradient(circle, ${colors[200]}0D 0%, transparent 100%)`,
         }}
       ></div>
     </div>

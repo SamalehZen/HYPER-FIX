@@ -10,6 +10,8 @@ import { Separator } from '../ui/separator';
 import { Brain, Upload, Copy, Check, X, RefreshCw, FileText, AlertCircle, Zap, Clock } from 'lucide-react';
 import AIClassificationService, { type AIClassificationResult } from '../../lib/ai-classification';
 import { testAIConnection } from '../../lib/openrouter';
+import { useTheme } from '../../lib/theme-context';
+import * as XLSX from 'xlsx';
 
 interface ClassificationResult {
   label: string;
@@ -25,6 +27,7 @@ interface ClassificationResult {
 }
 
 const ClassificationService: React.FC = () => {
+  const { theme } = useTheme();
   const [inputText, setInputText] = useState('');
   const [results, setResults] = useState<ClassificationResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -153,7 +156,7 @@ const ClassificationService: React.FC = () => {
   // Copier les résultats
   const handleCopyResults = useCallback(() => {
     const selectedIndices = Array.from(selectedResults);
-    const selectedData = selectedIndices.length > 0 
+    const selectedData = selectedIndices.length > 0
       ? results.filter((_, index) => selectedIndices.includes(index))
       : results;
     
@@ -162,6 +165,37 @@ const ClassificationService: React.FC = () => {
       .join('\n');
     
     navigator.clipboard.writeText(textToCopy);
+  }, [results, selectedResults]);
+  
+  // Export XLSX
+  const handleExportXlsx = useCallback(() => {
+    const selectedIndices = Array.from(selectedResults);
+    const dataToExport = selectedIndices.length > 0
+      ? results.filter((_, index) => selectedIndices.includes(index))
+      : results;
+    
+    // Create worksheet data
+    const worksheetData = [
+      ['Libellé', 'Secteur', 'Rayon', 'Famille', 'Sous-famille', 'Confiance (%)', 'Validé', 'Temps de traitement (ms)'],
+      ...dataToExport.map(result => [
+        result.label,
+        result.secteur || '',
+        result.rayon || '',
+        result.famille || '',
+        result.sous_famille || '',
+        result.confidence,
+        result.validated ? 'Oui' : 'Non',
+        result.processing_time || 0
+      ])
+    ];
+    
+    // Create workbook
+    const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Classifications');
+    
+    // Export to file
+    XLSX.writeFile(workbook, `classifications-${new Date().toISOString().split('T')[0]}.xlsx`);
   }, [results, selectedResults]);
   
   // Sélection des résultats
@@ -188,12 +222,44 @@ const ClassificationService: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
     
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      setInputText(content);
-    };
-    reader.readAsText(file);
+    const fileName = file.name.toLowerCase();
+    
+    if (fileName.endsWith('.xlsx')) {
+      // Handle XLSX file
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          
+          // Get the first worksheet
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          
+          // Convert to JSON
+          const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+          
+          // Convert to text format (assuming first column contains the labels)
+          const textContent = jsonData
+            .filter((row): row is any[] => Array.isArray(row) && row.length > 0 && row[0])
+            .map(row => row[0])
+            .join('\n');
+          
+          setInputText(textContent);
+        } catch (error) {
+          console.error('Error parsing XLSX file:', error);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // Handle TXT/CSV files
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        setInputText(content);
+      };
+      reader.readAsText(file);
+    }
   }, []);
   
   // Si pas authentifié, afficher le formulaire de connexion
@@ -295,6 +361,10 @@ const ClassificationService: React.FC = () => {
                 <Copy className="h-4 w-4 mr-2" />
                 Copier
               </Button>
+              <Button variant="outline" size="sm" onClick={handleExportXlsx}>
+                <Download className="h-4 w-4 mr-2" />
+                Export XLSX
+              </Button>
               <Button variant="outline" size="sm" onClick={() => setIsAuthenticated(false)}>
                 Déconnexion
               </Button>
@@ -334,7 +404,7 @@ const ClassificationService: React.FC = () => {
                 <Input
                   id="file-import"
                   type="file"
-                  accept=".txt,.csv"
+                  accept=".txt,.csv,.xlsx"
                   onChange={handleFileImport}
                   className="text-sm"
                 />
@@ -388,27 +458,27 @@ const ClassificationService: React.FC = () => {
                 <div className="text-sm text-muted-foreground">Total</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">{stats.highConfidence}</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-green-600' : 'text-green-700'}`}>{stats.highConfidence}</div>
                 <div className="text-sm text-muted-foreground">Haute confiance</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-yellow-600">{stats.mediumConfidence}</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-yellow-600' : 'text-yellow-700'}`}>{stats.mediumConfidence}</div>
                 <div className="text-sm text-muted-foreground">Moyenne confiance</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-red-600">{stats.lowConfidence}</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-red-600' : 'text-red-700'}`}>{stats.lowConfidence}</div>
                 <div className="text-sm text-muted-foreground">Faible confiance</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{stats.validated}</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-blue-600' : 'text-blue-700'}`}>{stats.validated}</div>
                 <div className="text-sm text-muted-foreground">Validées</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{stats.aiGenerated}</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-purple-600' : 'text-purple-700'}`}>{stats.aiGenerated}</div>
                 <div className="text-sm text-muted-foreground">Générées IA</div>
               </div>
               <div className="text-center">
-                <div className="text-2xl font-bold text-indigo-600">{stats.avgProcessingTime}ms</div>
+                <div className={`text-2xl font-bold ${theme === 'dark' ? 'text-indigo-600' : 'text-indigo-700'}`}>{stats.avgProcessingTime}ms</div>
                 <div className="text-sm text-muted-foreground">Temps moyen</div>
               </div>
             </div>
@@ -506,7 +576,7 @@ const ClassificationService: React.FC = () => {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleValidation(index, true)}
-                            className="text-green-600 hover:text-green-700 h-8 w-8 p-0"
+                            className={`${theme === 'dark' ? 'text-green-600 hover:text-green-700' : 'text-green-700 hover:text-green-800'} h-8 w-8 p-0`}
                           >
                             <Check className="h-4 w-4" />
                           </Button>
@@ -514,7 +584,7 @@ const ClassificationService: React.FC = () => {
                             size="sm"
                             variant="ghost"
                             onClick={() => handleValidation(index, false)}
-                            className="text-red-600 hover:text-red-700 h-8 w-8 p-0"
+                            className={`${theme === 'dark' ? 'text-red-600 hover:text-red-700' : 'text-red-700 hover:text-red-800'} h-8 w-8 p-0`}
                           >
                             <X className="h-4 w-4" />
                           </Button>
