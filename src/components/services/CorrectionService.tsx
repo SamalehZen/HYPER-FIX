@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Button } from '../ui/button';
+import { BorderBeam } from '../ui/border-beam';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -262,13 +263,17 @@ const CorrectionService: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-3 relative">
               <Textarea
                 placeholder="Saisissez vos libellés ici, un par ligne...&#10;Exemple:&#10;2.5 KG FRITES 9/9 SIMPL&#10;500G BOULE PAIN BIO 0%POUS.CRF&#10;yaour.grec danon 500g"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 rows={6}
                 className="resize-none"
+              />
+              <BorderBeam
+                colorFrom={theme === 'dark' ? '#c8b4a0' : '#6b5545'}
+                colorTo={theme === 'dark' ? '#a89080' : '#544237'}
               />
             </div>
             
