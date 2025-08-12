@@ -41,6 +41,8 @@
     "@radix-ui/react-tooltip": "^1.2.7",
     "@supabase/supabase-js": "^2.53.0",
     "@tailwindcss/vite": "^4.1.7",
+    "@tsparticles/react": "^3.0.0",
+    "@tsparticles/slim": "^3.9.1",
     "@typescript/native-preview": "^7.0.0-dev.20250627.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
