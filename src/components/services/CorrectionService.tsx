@@ -8,7 +8,7 @@ import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Separator } from '../ui/separator';
 import { Download, Upload, Copy, Check, X, RefreshCw, FileText } from 'lucide-react';
-import { correctLabel, correctLabels, exportCorrections, type CorrectionResult } from '../../lib/correction';
+import { correctLabel, correctLabels, correctLabelsPipeline, exportCorrections, type CorrectionResult } from '../../lib/correction';
 import { saveCorrection } from '../../lib/database';
 
 const CorrectionService: React.FC = () => {
@@ -30,7 +30,7 @@ const CorrectionService: React.FC = () => {
         .map(line => line.trim())
         .filter(line => line.length > 0);
       
-      const correctionResults = correctLabels(labels);
+      const correctionResults = correctLabelsPipeline(labels);
       setResults(correctionResults);
       
       // Sauvegarder automatiquement en base
@@ -165,7 +165,7 @@ const CorrectionService: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold text-primary">Correction de Libellés</h1>
           <p className="text-muted-foreground">
-            Correction automatique et normalisation des libellés produits
+            Correction automatique et normalisation des libellés produits avec le nouveau pipeline
           </p>
         </div>
         
@@ -191,14 +191,14 @@ const CorrectionService: React.FC = () => {
             Saisie des Libellés
           </CardTitle>
           <CardDescription>
-            Saisissez les libellés à corriger (un par ligne) ou importez un fichier
+            Saisissez les libellés à corriger (un par ligne) ou importez un fichier. Le nouveau pipeline de correction extrait les marques, descriptions, poids/volumes et fractions.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             <div className="lg:col-span-3">
               <Textarea
-                placeholder="Saisissez vos libellés ici, un par ligne...&#10;Exemple:&#10;yaour.grec danon 500g&#10;eau mineral evian 1.5L&#10;pain de.mie haribo 400gr"
+                placeholder="Saisissez vos libellés ici, un par ligne...&#10;Exemple:&#10;2.5 KG FRITES 9/9 SIMPL&#10;500G BOULE PAIN BIO 0%POUS.CRF&#10;yaour.grec danon 500g"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 rows={6}
