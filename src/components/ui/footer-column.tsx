@@ -40,7 +40,7 @@ const data = {
   company: {
     name: "L'Hyper-Fix",
     description:
-      'Building beautiful and functional web experiences with modern technologies. We help startups and businesses create their digital presence.',
+      'Nous créons des expériences web belles et fonctionnelles grâce aux technologies modernes. Nous aidons les startups et les entreprises à construire leur présence numérique.',
     logo: '/logo.webp',
   },
 };
