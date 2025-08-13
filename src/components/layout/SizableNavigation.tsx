@@ -57,15 +57,14 @@ export function SizableNavigation({ currentPage = "home" }: { currentPage?: stri
   return (
     <Navbar className="fixed top-0">
       <NavBody>
-        <HyperFixLogo />
+        <div className="flex items-center">
+          <HyperFixLogo />
+        </div>
         <NavItems items={navigationItems} onItemClick={(item) => handleNavigation(item.link)} />
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={toggleTheme}>
+          <Button variant="outline" size="sm" onClick={toggleTheme} data-testid="theme-toggle">
             {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
           </Button>
-          <NavbarButton href="/login" as="a">
-            Connexion
-          </NavbarButton>
         </div>
       </NavBody>
       <MobileNav>
@@ -83,9 +82,6 @@ export function SizableNavigation({ currentPage = "home" }: { currentPage?: stri
             <Button variant="outline" size="sm" onClick={toggleTheme}>
               {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
             </Button>
-            <NavbarButton href="/login" as="a">
-              Connexion
-            </NavbarButton>
           </div>
         </MobileNavMenu>
       </MobileNav>
