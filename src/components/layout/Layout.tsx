@@ -2,6 +2,7 @@
 import React, { ReactNode } from "react";
 import { SizableNavigation } from "./SizableNavigation";
 import { useTheme } from "../../lib/theme-context";
+import Footer4Col from "../ui/footer-column";
 
 interface LayoutProps {
   children: ReactNode;
@@ -22,6 +23,7 @@ export function Layout({ children, currentPage = "home", showNavigation = true }
       <main>
         {children}
       </main>
+      <Footer4Col />
     </div>
   );
 }
