@@ -38,7 +38,7 @@ const data = {
     address: 'Djibouti, Balbala 11',
   },
   company: {
-    name: 'Mvpblocks',
+    name: "L'Hyper-Fix",
     description:
       'Building beautiful and functional web experiences with modern technologies. We help startups and businesses create their digital presence.',
     logo: '/logo.webp',
@@ -210,7 +210,7 @@ export default function Footer4Col() {
             </p>
 
             <p className="text-secondary-foreground/70 mt-4 text-sm transition sm:order-first sm:mt-0">
-              &copy; 2025 {data.company.name}
+              &copy; 2025 SAMALEH
             </p>
           </div>
         </div>
