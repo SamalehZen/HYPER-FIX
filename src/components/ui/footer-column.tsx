@@ -33,9 +33,9 @@ const data = {
     livechat: '/live-chat',
   },
   contact: {
-    email: 'hello@mvpblocks.com',
-    phone: '+91 8637373116',
-    address: 'Kolkata, West Bengal, India',
+    email: 'samaleh2018@gmail.com',
+    phone: '+253 77 35 49 95',
+    address: 'Djibouti, Balbala 11',
   },
   company: {
     name: 'Mvpblocks',
