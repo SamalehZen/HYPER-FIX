@@ -95,10 +95,10 @@ export const CORRECTION_RULES: CorrectionRule[] = [
 
 // Liste des marques connues
 export const KNOWN_BRANDS = [
-  'CRF', 'CRF EX', 'CRF CLASSIC', 'CRF BIO', 'CRF PREMIUM',
-  'SIMPL', 'BONDUELLE', 'CARREFOUR', 'TWIX', 'NUTELLA',
-  'DANONE', 'EVIAN', 'HARIBO', 'COCA', 'PEPSI',
-  'NESCAFE', 'KINDER', 'FERRERO', 'M&M', 'SNICKERS'
+  'CARREFOUR', 'BONDUELLE', 'SIMPL', 'SRP', 'LOTUS', 'TWIX', 'BOUNTY', 'NUTELLA',
+  'KINDER', 'RAFFAELLO', 'SNICKERS', 'CRF SENS', 'CRF EXTRA', 'CRF CLASSIC', 'CRF CLASS',
+  'CRF BIO', 'CRF OR', 'CRF EX', 'CRF CL', 'CRF E', 'CRF C', 'CRF S', 'CRFM',
+  'CRFCLA', 'CRFCL', 'CRFC', 'CRFEX'
 ];
 
 // Fonctions de correction principales
@@ -246,135 +246,83 @@ export function exportCorrections(results: CorrectionResult[], format: 'csv' | '
   return csvLines.join('\n');
 }
 
-// Nouvelle fonction de correction basée sur le pipeline spécifié
+// Nouvelle fonction de correction basée sur le pipeline spécifié (V2)
 export function correctLabelPipeline(originalLabel: string): CorrectionResult {
-  // Initialisation
-  let libelleOriginal = originalLabel;
-  let texteEnCours = originalLabel;
-  let marque = "";
-  let poidsVolume: string[] = [];
-  let fractionSeule = "";
-  let description = "";
-  const appliedRules: string[] = [];
-
-  try {
-    // Étape de Nettoyage et Normalisation
-    // Mise en majuscules
-    texteEnCours = texteEnCours.toUpperCase();
-    appliedRules.push('uppercase_conversion');
-
-    // Remplacement des décimales : Utiliser une expression régulière pour trouver un nombre, un point, un autre nombre, puis une unité
-    // Pattern : (\d+)\.(\d+)\s*(KG|G|L|ML|CL)
-    // Remplacer . par ,.
-    const decimalRegex = /(\d+)\.(\d+)\s*(KG|G|L|ML|CL)/gi;
-    const decimalMatches = texteEnCours.match(decimalRegex);
-    if (decimalMatches) {
-      texteEnCours = texteEnCours.replace(decimalRegex, (match, num1, num2, unit) => {
-        return `${num1},${num2}${unit}`;
-      });
-      appliedRules.push('decimal_normalization');
+    if (!originalLabel || typeof originalLabel !== 'string' || !originalLabel.trim()) {
+        return { original: originalLabel, corrected: '', rules: [], confidence: 0 };
     }
 
-    // Normalisation des unités (déjà dans une forme correcte dans les exemples, mais on vérifie)
-    // Cette étape est déjà couverte par les règles existantes
+    let text = originalLabel.toUpperCase();
+    const appliedRules: string[] = [];
 
-    // Étape d'Extraction des Composants
-    // Extraire la Marque
-    let marqueFound = false;
-    const words = texteEnCours.split(/\s+/);
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-      // Vérifier d'abord les marques à plusieurs mots
-      if (i < words.length - 1) {
-        const twoWordBrand = `${word} ${words[i + 1]}`;
-        if (KNOWN_BRANDS.includes(twoWordBrand)) {
-          marque = twoWordBrand;
-          marqueFound = true;
-          // Supprimer ces mots du texte
-          words.splice(i, 2);
-          i--; // Ajuster l'index
-          break;
+    // --- ÉTAPE A : PRÉ-NETTOYAGE ET EXTRACTION ---
+
+    // Règle V2: On nettoie les points en espaces TÔT pour faciliter la détection.
+    if (text.includes('.')) {
+        text = text.replace(/\./g, ' ');
+        appliedRules.push('dots_to_spaces');
+    }
+
+    // 1. Extraction de la marque
+    let brand = "";
+    const moved_brands = KNOWN_BRANDS.filter(b => b.startsWith('CRF')).sort((a, b) => b.length - a.length);
+
+    for (const b of moved_brands) {
+        const brandRegex = new RegExp(`\\b${b.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1")}\\b`);
+        const match = text.match(brandRegex);
+        if (match) {
+            brand = b;
+            text = text.replace(brandRegex, ' ').trim();
+            appliedRules.push('brand_extraction');
+            break;
         }
-      }
-      
-      // Vérifier ensuite les marques à un mot
-      if (KNOWN_BRANDS.includes(word)) {
-        marque = word;
-        marqueFound = true;
-        // Supprimer ce mot du texte
-        words.splice(i, 1);
-        i--; // Ajuster l'index
-        break;
-      }
-    }
-    
-    if (marqueFound) {
-      appliedRules.push('brand_extraction');
-    }
-    
-    texteEnCours = words.join(' ');
-
-    // Extraire le Poids/Volume
-    // Utiliser une regex pour trouver tous les formats de poids/volume
-    const poidsVolumeRegex = /(\d+(?:[.,]\d+)?)\s*(KG|G|L|ML|CL)|(?:\d+X)?\d+\s*(KG|G|L|ML|CL)/gi;
-    const poidsVolumeMatches = texteEnCours.match(poidsVolumeRegex);
-    if (poidsVolumeMatches) {
-      poidsVolume.push(...poidsVolumeMatches);
-      appliedRules.push('weight_volume_extraction');
-    }
-    
-    // Supprimer les poids/volumes du texte
-    texteEnCours = texteEnCours.replace(poidsVolumeRegex, '').replace(/\s+/g, ' ').trim();
-
-    // Extraire la Fraction Seule
-    // Utiliser une regex pour trouver les fractions de type \d+/\d+ qui ne sont PAS suivies par une unité
-    const fractionRegex = /(\d+\/\d+)\s*(?![A-Z])/g;
-    const fractionMatches = texteEnCours.match(fractionRegex);
-    if (fractionMatches && fractionMatches.length > 0) {
-      fractionSeule = fractionMatches[0].trim();
-      texteEnCours = texteEnCours.replace(fractionRegex, '').replace(/\s+/g, ' ').trim();
-      appliedRules.push('fraction_extraction');
     }
 
-    // Le reste est la Description
-    description = texteEnCours.trim();
+    // 2. Extraction des quantités (DANS LE BON ORDRE)
+    const UNITS_PATTERN = '(G|KG|ML|CL|L)';
+    
+    // D'abord les multipacks (ex: X6)
+    const multipacks_pattern = /\bX\d+\b/g;
+    const multipacks = text.match(multipacks_pattern) || [];
+    if (multipacks.length > 0) {
+        text = text.replace(multipacks_pattern, ' ').trim();
+        appliedRules.push('multipack_extraction');
+    }
 
-    // Étape de Nettoyage Final et Recomposition
-    // Nettoyer la description : Supprimer les caractères spéciaux restants
-    description = description.replace(/[.'\-]/g, '').replace(/\s+/g, ' ').trim();
+    // Ensuite les poids/volumes (ex: 15X30G, 500G, 451 G)
+    const weights_pattern = new RegExp(`\\b\\d+(?:X\\d+)?[\\d,]*\\s*${UNITS_PATTERN}\\b`, 'g');
+    const weights = text.match(weights_pattern) || [];
+    if (weights.length > 0) {
+        text = text.replace(weights_pattern, ' ').trim();
+        appliedRules.push('weight_extraction');
+    }
     
-    // Assembler le libellé final
-    // Construire la chaîne finale dans l'ordre : [Marque] [Description] [PoidsVolume] [FractionSeule]
-    const parts: string[] = [];
-    if (marque) parts.push(marque);
-    if (description) parts.push(description);
-    if (poidsVolume.length > 0) parts.push(...poidsVolume);
-    if (fractionSeule) parts.push(fractionSeule);
-    
-    let libelleCorrige = parts.join(' ');
-    
-    // Nettoyer les espaces multiples
-    libelleCorrige = libelleCorrige.replace(/\s+/g, ' ').trim();
+    // 3. Nettoyage de la description
+    let description = text.replace(/[^A-Z0-9/]/g, ' ');
+    description = description.replace(/\s+/g, ' ').trim();
 
-    // Calcul de la confiance basé sur le nombre de composants extraits
-    const confidence = calculatePipelineConfidence(marque, description, poidsVolume, fractionSeule);
+    // --- ÉTAPE B : RECOMPOSITION ---
+    const final_parts: string[] = [];
+    if (brand) {
+        final_parts.push(brand);
+    }
+    if (description) {
+        final_parts.push(description);
+    }
+
+    // On ajoute les quantités dans l'ordre: multipacks puis poids
+    // Et on nettoie les espaces (ex: "451 G" -> "451G")
+    final_parts.push(...multipacks.map(p => p.replace(/\s/g, '')));
+    final_parts.push(...weights.map(w => w.replace(/\s/g, '')));
+    
+    const corrected_label = final_parts.filter(part => part).join(' ');
 
     return {
-      original: libelleOriginal,
-      corrected: libelleCorrige,
-      rules: appliedRules,
-      confidence
+        original: originalLabel,
+        corrected: corrected_label,
+        rules: appliedRules,
+        confidence: calculatePipelineConfidence(brand, description, [...multipacks, ...weights], "")
     };
-  } catch (error) {
-    console.error('Erreur dans le pipeline de correction:', error);
-    // En cas d'erreur, retourner le libellé original avec une confiance faible
-    return {
-      original: libelleOriginal,
-      corrected: libelleOriginal.toUpperCase(),
-      rules: ['error_fallback'],
-      confidence: 0
-    };
-  }
 }
 
 // Fonction pour calculer la confiance basée sur les composants extraits
