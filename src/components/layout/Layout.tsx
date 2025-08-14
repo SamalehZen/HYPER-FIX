@@ -1,7 +1,8 @@
 "use client";
 import React, { ReactNode } from "react";
-import { Navigation } from "./Navigation";
+import { SizableNavigation } from "./SizableNavigation";
 import { useTheme } from "../../lib/theme-context";
+import Footer4Col from "../ui/footer-column";
 
 interface LayoutProps {
   children: ReactNode;
@@ -18,10 +19,11 @@ export function Layout({ children, currentPage = "home", showNavigation = true }
 
   return (
     <div className={`min-h-screen ${backgroundClass}`}>
-      {showNavigation && <Navigation currentPage={currentPage} />}
-      <main className={showNavigation ? "pt-16" : ""}>
+      {showNavigation && <SizableNavigation currentPage={currentPage} />}
+      <main>
         {children}
       </main>
+      <Footer4Col />
     </div>
   );
 }

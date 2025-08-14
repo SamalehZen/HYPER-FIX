@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight, Cpu, Database, BarChart3, Shield, Zap, Target } from "lucide-react";
 import { useNavigate } from "../lib/router";
 import { useTheme } from "../lib/theme-context";
+import { TrustedBy } from "../components/layout/TrustedBy";
 
 export default function HomePage() {
   const { theme } = useTheme();
@@ -316,6 +317,7 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+      <TrustedBy />
     </Layout>
   );
 }
