@@ -14,27 +14,64 @@ import { saveCorrection } from '../../lib/database';
 import { useTheme } from '../../lib/theme-context';
 import * as XLSX from 'xlsx';
 
+import { Shield, KeyRound, Save } from 'lucide-react';
+import { Switch } from '../ui/switch';
+import { Label } from '../ui/label';
+import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { Terminal } from 'lucide-react';
+
 const CorrectionService: React.FC = () => {
   const { theme } = useTheme();
   const [inputText, setInputText] = useState('');
   const [results, setResults] = useState<CorrectionResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedResults, setSelectedResults] = useState<Set<number>>(new Set());
+
+  // Nouveaux états pour le mode IA et la clé API
+  const [isAiMode, setIsAiMode] = useState(false);
+  const [apiKey, setApiKey] = useState('');
+  const [apiKeyError, setApiKeyError] = useState('');
+
+  // Charger la configuration depuis le localStorage au montage
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem('googleApiKey');
+    const savedAiMode = localStorage.getItem('isAiMode');
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+    }
+    if (savedAiMode) {
+      setIsAiMode(savedAiMode === 'true');
+    }
+  }, []);
   
   // Traitement des libellés individuels ou par lot
   const handleCorrection = useCallback(async () => {
     if (!inputText.trim()) return;
+
+    if (isAiMode && (!apiKey || !apiKey.startsWith('AIza'))) {
+      setApiKeyError('Veuillez saisir et sauvegarder une clé API Google valide pour utiliser le mode IA.');
+      return;
+    }
     
     setIsProcessing(true);
+    setResults([]); // Vider les anciens résultats
     
     try {
-      // Séparer les lignes pour traitement par lot
       const labels = inputText
         .split('\n')
         .map(line => line.trim())
         .filter(line => line.length > 0);
       
-      const correctionResults = await correctLabelsWithGemini(labels);
+      let correctionResults: CorrectionResult[] = [];
+
+      if (isAiMode) {
+        // Mode IA
+        correctionResults = await correctLabelsWithGemini(labels, apiKey);
+      } else {
+        // Mode Hors ligne
+        correctionResults = labels.map(label => correctLabelOffline(label));
+      }
+
       setResults(correctionResults);
       
       // Sauvegarder automatiquement en base
@@ -58,7 +95,7 @@ const CorrectionService: React.FC = () => {
     } finally {
       setIsProcessing(false);
     }
-  }, [inputText]);
+  }, [inputText, isAiMode, apiKey]);
   
   // Validation manuelle d'un résultat
   const handleValidation = useCallback(async (index: number, isValid: boolean) => {
@@ -249,6 +286,70 @@ const CorrectionService: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Zone de Configuration IA */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5" />
+            Configuration du Mode de Correction
+          </CardTitle>
+          <CardDescription>
+            Choisissez entre la correction rapide hors ligne et la correction avancée par IA (nécessite une clé API).
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-4 rounded-md border p-4">
+            <div className="flex-1 space-y-1">
+              <p className="text-sm font-medium leading-none">
+                Mode de Correction IA
+              </p>
+              <p className={`text-sm ${isAiMode ? 'text-green-500' : 'text-muted-foreground'}`}>
+                {isAiMode ? 'Activé : Utilise l\'API Google Gemini pour une correction plus précise.' : 'Désactivé : Utilise l\'algorithme local rapide.'}
+              </p>
+            </div>
+            <Switch
+              checked={isAiMode}
+              onCheckedChange={(checked) => {
+                setIsAiMode(checked);
+                localStorage.setItem('isAiMode', String(checked));
+              }}
+              aria-readonly
+            />
+          </div>
+
+          {isAiMode && (
+            <div className="space-y-2">
+              <Label htmlFor="api-key-input">Clé API Google Gemini</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="api-key-input"
+                  type="password"
+                  value={apiKey}
+                  onChange={(e) => {
+                    setApiKey(e.target.value);
+                    setApiKeyError('');
+                  }}
+                  placeholder="Saisissez votre clé API ici..."
+                />
+                <Button onClick={() => {
+                  if (apiKey && apiKey.startsWith('AIza')) {
+                    localStorage.setItem('googleApiKey', apiKey);
+                    setApiKeyError('');
+                    // On pourrait ajouter un toast de succès ici
+                  } else {
+                    setApiKeyError('Clé API invalide. Elle doit commencer par "AIza".');
+                  }
+                }}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Sauvegarder
+                </Button>
+              </div>
+              {apiKeyError && <p className="text-sm text-destructive">{apiKeyError}</p>}
+            </div>
+          )}
+        </CardContent>
+      </Card>
       
       {/* Zone de saisie */}
       <Card>
