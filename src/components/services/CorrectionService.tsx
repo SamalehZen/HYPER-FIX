@@ -9,7 +9,7 @@ import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Separator } from '../ui/separator';
 import { Download, Upload, Copy, Check, X, RefreshCw, FileText } from 'lucide-react';
-import { correctLabelsWithGemini, exportCorrections, type CorrectionResult } from '../../lib/correction';
+import { correctLabelsWithGemini, correctLabelOffline, exportCorrections, type CorrectionResult } from '../../lib/correction';
 import { saveCorrection } from '../../lib/database';
 import { useTheme } from '../../lib/theme-context';
 import * as XLSX from 'xlsx';
