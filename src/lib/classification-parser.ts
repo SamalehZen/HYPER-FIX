@@ -8,40 +8,51 @@ const getTabCount = (line: string): number => {
 export const parseHierarchy = (hierarchyString: string): ClassificationNode[] => {
     const lines = hierarchyString.split('\n').filter(line => line.trim() !== '');
     const nodes: ClassificationNode[] = [];
-    const parentCodeStack: (string | null)[] = [null, null, null, null, null]; // Supports up to 5 levels deep (root + 4)
+    // The parent stack now tracks the code at each indentation level.
+    // Index 0 = parent for tabCount 1, Index 1 = parent for tabCount 2, etc.
+    const parentCodeStack: (string | null)[] = [null, null, null, null, null];
+
+    // First line is the root, let's process it separately to set up the stack.
+    if (lines.length > 0) {
+        const rootContent = lines[0].trim();
+        const rootParts = rootContent.split(/\s+/);
+        parentCodeStack[0] = rootParts[0]; // e.g., '201'
+    }
 
     for (const line of lines) {
         const tabCount = getTabCount(line);
-
         const content = line.trim();
+
+        if (!content) continue;
+
         const parts = content.split(/\s+/);
         const code = parts[0];
         const name = parts.slice(1).join(' ');
 
         if (!code || !name) continue;
 
-        // Corrected logical level mapping:
-        // 1 tab -> level 1 (Secteur)
-        // 2 tabs -> level 2 (Rayon)
-        // 3 tabs -> level 3 (Famille)
-        // 4 tabs -> level 4 (Sous-famille)
-        const logicalLevel = tabCount;
+        // The level is determined by the number of tabs.
+        // 1 tab = Secteur, 2 tabs = Rayon, etc.
+        const level = tabCount;
 
-        // We only care about levels 1-4. Level 0 (the root) is skipped.
-        if (logicalLevel < 1 || logicalLevel > 4) continue;
+        // Validate the structure based on level and code length
+        if (level === 1 && code.length !== 2) continue; // Secteur must have 2-digit code
+        if (level > 1 && code.length !== 3) continue; // Others must have 3-digit codes
+        if (level < 1 || level > 4) continue; // We only care about levels 1-4
 
-        // Parent is at the stack index of the level above the current one.
-        const parentCode = parentCodeStack[logicalLevel - 1];
+        // The parent code is at the stack index for the level *above* the current one.
+        // A level 1 (1 tab) node's parent is at stack index 0.
+        const parentCode = parentCodeStack[level - 1];
 
         nodes.push({
-            level: logicalLevel,
+            level,
             code,
             name,
             parentCode,
         });
 
         // Store the current code at the current level's index for future children.
-        parentCodeStack[logicalLevel] = code;
+        parentCodeStack[level] = code;
     }
 
     return nodes;
