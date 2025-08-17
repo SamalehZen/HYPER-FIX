@@ -12,6 +12,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.832.0",
     "@fontsource/inter": "^5.2.5",
+    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.0.1",
     "@radix-ui/react-accordion": "^1.2.11",
     "@radix-ui/react-alert-dialog": "^1.1.14",
@@ -40,7 +41,10 @@
     "@radix-ui/react-toggle-group": "^1.1.10",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@supabase/supabase-js": "^2.53.0",
+    "@tabler/icons-react": "^3.34.1",
     "@tailwindcss/vite": "^4.1.7",
+    "@tsparticles/react": "^3.0.0",
+    "@tsparticles/slim": "^3.9.1",
     "@typescript/native-preview": "^7.0.0-dev.20250627.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

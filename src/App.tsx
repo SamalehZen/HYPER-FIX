@@ -1,5 +1,6 @@
 import React from "react";
 import { RouterProvider, Router } from "./lib/router";
+import { ThemeProvider } from "./lib/theme-context";
 import HomePage from "./pages/HomePage";
 import CorrectionPage from "./pages/CorrectionPage";
 import ClassificationPage from "./pages/ClassificationPage";
@@ -52,8 +53,10 @@ const routes = [
 
 export default function App() {
   return (
-    <RouterProvider routes={routes} initialPath="/">
-      <Router />
-    </RouterProvider>
+    <ThemeProvider>
+      <RouterProvider routes={routes} initialPath="/">
+        <Router />
+      </RouterProvider>
+    </ThemeProvider>
   );
 }
