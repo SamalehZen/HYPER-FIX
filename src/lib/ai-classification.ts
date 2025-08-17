@@ -226,22 +226,51 @@ const UNCLASSIFIED_RESULT: ClassificationPath = {
     sousFamille: UNCLASSIFIED_CATEGORY,
 };
 
-const buildPrompt = (productDescription: string, hierarchyText: string): string => {
-    return `
-    You are an expert product classifier for a supermarket. Your task is to classify a given product description into a predefined hierarchical structure.
+const buildPrompt = (productsToClassify: string, hierarchyText: string): string => {
+    const fewShotExample1_input = "TSHIRT MC ANTIUV DE PLAGE BEUCHAT 6 AN";
+    const fewShotExample1_output = "TSHIRT MC ANTIUV DE PLAGE BEUCHAT 6 AN,TEXTILE,06,BEBE ENFANTS,062,VTEMENT SPORT/FILLE 6-16,665,SPORTWEAR,501";
+    const fewShotExample2_input = "KIT PALMES REGLABLES MASQUE ET TUBA 38/41";
+    const fewShotExample2_output = "KIT PALMES REGLABLES MASQUE ET TUBA 38/41,BAZAR,07,SPORTS,071,SPORTS AQUATIQUES,712,SET PLONGEE,204";
 
-    This is the complete classification hierarchy:
-    --- HIERARCHY START ---
-    ${hierarchyText}
-    --- HIERARCHY END ---
+    return `### RÔLE ET OBJECTIF ###
+Tu es un gestionnaire de catégories expert et extrêmement méticuleux, dont la mission est de classifier des produits selon une hiérarchie de magasin précise. Ta tâche est d'assigner chaque produit au bon Secteur, Rayon, Famille et Sous-famille, sans aucune erreur.
 
-    Rules:
-    1. Analyze the product description: "${productDescription}".
-    2. Find the most appropriate complete path from the hierarchy: Secteur > Rayon > Famille > Sous-famille.
-    3. You MUST return the full path, including codes and names for all four levels.
-    4. If no suitable classification can be found with high confidence, you MUST return "NON CLASSIFIÉ" for all names and "N/A" for all codes.
-    5. Respond ONLY with the JSON object. Do not add any extra text or explanations.
-    `;
+### CONTEXTE : HIÉRARCHIE PRODUIT ###
+La SEULE source que tu DOIS utiliser pour la classification est la structure fournie ci-dessous entre les balises \`\`\`
+<HIERARCHY>
+</HIERARCHY>
+\`\`\`. Ne dévie sous aucun prétexte de cette structure.
+
+<HIERARCHY>
+${hierarchyText}
+</HIERARCHY>
+
+### INSTRUCTIONS DE LA TÂCHE ###
+Une liste de produits te sera fournie. Pour chaque produit, suis rigoureusement les étapes suivantes :
+1.  Lis attentivement le nom du produit ("libelle") et identifie les mots-clés qui décrivent le produit, sa nature, son usage ou sa cible.
+2.  En te basant sur la hiérarchie fournie, trouve le **Secteur** le plus approprié (ex: "TEXTILE", "BAZAR") et son numéro.
+3.  À l'intérieur de ce Secteur, identifie le **Rayon** le plus pertinent (ex: "BEBE ENFANTS", "SPORTS") et son numéro.
+4.  À l'intérieur de ce Rayon, identifie la **Famille** la plus logique (ex: "VTEMENT SPORT/PLAGE GIRL", "SPORTS AQUATIQUES") et son numéro.
+5.  Enfin, à l'intérieur de cette Famille, sélectionne la **Sous-famille** la plus spécifique et correcte (ex: "VETEMENT DE SPORT", "SET PLONGEE") et son numéro.
+6.  Formate la sortie en une seule ligne par produit, au format CSV, avec les colonnes séparées par une virgule. N'inclus pas de ligne d'en-tête. L'ordre des colonnes doit être :
+    \`libelle,nom_secteur,numero_secteur,nom_rayon,numero_rayon,nom_famille,numero_famille,nom_sous_famille,numero_sous_famille\`
+
+### EXEMPLES (FORMAT DE SORTIE ATTENDU) ###
+Voici des exemples exacts du format de sortie que j'attends de toi :
+
+Exemple 1:
+Input: ${fewShotExample1_input}
+Output: ${fewShotExample1_output}
+
+Exemple 2:
+Input: ${fewShotExample2_input}
+Output: ${fewShotExample2_output}
+
+### PRODUITS À CLASSIFIER ###
+Maintenant, classifie la liste de produits suivante en respectant toutes les instructions ci-dessus :
+
+${productsToClassify}
+`;
 };
 
 const getHierarchyAsText = (hierarchy: ClassificationNode[]): string => {
@@ -258,7 +287,7 @@ export const classifyProducts = async (
     products: Product[],
     hierarchy: ClassificationNode[],
     apiKey: string,
-    rpm: number,
+    rpm: number, // Keep for potential future use, though we now send one big request.
     onProgress: (status: import("./types").ProgressStatus) => void
 ): Promise<ClassifiedProduct[]> => {
     if (!apiKey) {
@@ -267,24 +296,15 @@ export const classifyProducts = async (
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    // Updated GenerationConfig: No JSON schema, expecting plain text (CSV).
+    // Temperature adjusted as per user suggestion.
     const generationConfig: GenerationConfig = {
-        responseMimeType: "application/json",
-        responseSchema: {
-            type: "object",
-            properties: {
-                secteur_code: { type: "string" },
-                secteur_name: { type: "string" },
-                rayon_code: { type: "string" },
-                rayon_name: { type: "string" },
-                famille_code: { type: "string" },
-                famille_name: { type: "string" },
-                sous_famille_code: { type: "string" },
-                sous_famille_name: { type: "string" },
-            },
-            required: ["secteur_code", "secteur_name", "rayon_code", "rayon_name", "famille_code", "famille_name", "sous_famille_code", "sous_famille_name"]
-        },
-        temperature: 0.2, topP: 0.9, topK: 40,
+      temperature: 0.5,
+      topP: 0.9,
+      topK: 40,
     };
+
     const safetySettings = [
       { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
       { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -293,70 +313,34 @@ export const classifyProducts = async (
     ];
 
     const hierarchyText = getHierarchyAsText(hierarchy);
-    const classifiedProducts: ClassifiedProduct[] = [];
-    const requestTimestamps: number[] = [];
-    const sixtySeconds = 60 * 1000;
+    const productDescriptions = products.map(p => p.description).join('\n');
 
-    for (let i = 0; i < products.length; i++) {
-        const product = products[i];
+    try {
+        onProgress({ type: 'PROGRESS', current: 1, total: 1 }); // Single batch request
 
-        // --- Rate Limiting Logic ---
-        const now = Date.now();
-        // Remove timestamps older than 60 seconds
-        while (requestTimestamps.length > 0 && now - requestTimestamps[0] > sixtySeconds) {
-            requestTimestamps.shift();
-        }
+        const prompt = buildPrompt(productDescriptions, hierarchyText);
 
-        if (requestTimestamps.length >= rpm) {
-            const timeSinceOldestRequest = now - requestTimestamps[0];
-            const timeToWait = sixtySeconds - timeSinceOldestRequest;
+        const result = await model.generateContent({
+            contents: [{ role: "user", parts: [{ text: prompt }] }],
+            generationConfig,
+            safetySettings,
+        });
 
-            // Countdown logic
-            let countdown = Math.ceil(timeToWait / 1000);
-            while (countdown > 0) {
-                onProgress({ type: 'PAUSED', countdown });
-                await new Promise(resolve => setTimeout(resolve, 1000));
-                countdown--;
-            }
-            // Final wait for the remaining milliseconds
-            await new Promise(resolve => setTimeout(resolve, timeToWait % 1000));
-        }
-        // --- End Rate Limiting Logic ---
+        const csvResponse = result.response.text();
+        const classifiedProducts = parseCsvResponse(csvResponse, products);
 
-        try {
-            onProgress({ type: 'PROGRESS', current: i + 1, total: products.length });
-            requestTimestamps.push(Date.now());
+        onProgress({ type: 'COMPLETE' });
+        return classifiedProducts;
 
-            const prompt = buildPrompt(product.description, hierarchyText);
-            const result = await model.generateContent({
-                contents: [{ role: "user", parts: [{ text: prompt }] }],
-                generationConfig,
-                safetySettings,
-            });
-
-            const jsonText = result.response.text();
-            const responseData = JSON.parse(jsonText) as GeminiResponse;
-
-            classifiedProducts.push({
-                description: product.description,
-                classification: {
-                    secteur: { code: responseData.secteur_code, name: responseData.secteur_name },
-                    rayon: { code: responseData.rayon_code, name: responseData.rayon_name },
-                    famille: { code: responseData.famille_code, name: responseData.famille_name },
-                    sousFamille: { code: responseData.sous_famille_code, name: responseData.sous_famille_name },
-                },
-            });
-
-        } catch (error) {
-            console.error(`Failed to classify product: "${product.description}"`, error);
-            onProgress({ type: 'ERROR', message: `Erreur pour: ${product.description}` });
-            classifiedProducts.push({
-                description: product.description,
-                classification: UNCLASSIFIED_RESULT,
-            });
-        }
+    } catch (error) {
+        console.error(`Failed to classify batch`, error);
+        onProgress({ type: 'ERROR', message: `L'appel à l'API a échoué: ${error}` });
+        // Return original products with unclassified status
+        return products.map(p => ({
+            description: p.description,
+            classification: UNCLASSIFIED_RESULT,
+        }));
     }
-
-    onProgress({ type: 'COMPLETE' });
-    return classifiedProducts;
 };
+
+import { parseCsvResponse } from './csv-parser';
