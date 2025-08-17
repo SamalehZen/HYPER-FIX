@@ -7,7 +7,8 @@ import { Textarea } from '../components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
-import { Loader2, Key, ListTree, Upload, Download } from 'lucide-react';
+import { Loader2, Key, ListTree, Upload, Download, Timer } from 'lucide-react';
+import { Progress } from '../components/ui/progress';
 
 // Import the new services and data
 import { CLASSIFICATION_HIERARCHY } from '../lib/classification-data';
@@ -19,9 +20,12 @@ import type { ClassifiedProduct, Product } from '../lib/types';
 const ClassificationPage: React.FC = () => {
   const [apiKey, setApiKey] = useState('');
   const [productInput, setProductInput] = useState('');
+  const [rpm, setRpm] = useState(50); // Default RPM limit
   const [results, setResults] = useState<ClassifiedProduct[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [statusText, setStatusText] = useState('');
 
   const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -43,6 +47,20 @@ const ClassificationPage: React.FC = () => {
     exportResultsToExcel(results);
   };
 
+  const handleProgressUpdate = (status: import('../lib/types').ProgressStatus) => {
+    if (status.type === 'PROGRESS') {
+      setProgress((status.current / status.total) * 100);
+      setStatusText(`Traitement de ${status.current} sur ${status.total}...`);
+    } else if (status.type === 'PAUSED') {
+      setStatusText(`Limite de requêtes atteinte. En pause pour ${status.countdown} secondes...`);
+    } else if (status.type === 'COMPLETE') {
+      setStatusText('Traitement terminé !');
+      setProgress(100);
+    } else if (status.type === 'ERROR') {
+        setError(status.message);
+    }
+  };
+
   const handleClassify = async () => {
     if (!apiKey) {
       setError('Veuillez entrer une clé API.');
@@ -56,14 +74,16 @@ const ClassificationPage: React.FC = () => {
     setIsLoading(true);
     setError(null);
     setResults([]);
+    setProgress(0);
+    setStatusText('Initialisation du traitement...');
 
     try {
       // Prepare the data
       const products: Product[] = productInput.split('\n').filter(line => line.trim() !== '').map(line => ({ description: line.trim() }));
       const hierarchy = parseHierarchy(CLASSIFICATION_HIERARCHY);
 
-      // Call the AI service
-      const classifiedResults = await classifyProducts(products, hierarchy, apiKey);
+      // Call the AI service with RPM and progress handler
+      const classifiedResults = await classifyProducts(products, hierarchy, apiKey, rpm, handleProgressUpdate);
       setResults(classifiedResults);
 
     } catch (e) {
@@ -92,13 +112,27 @@ const ClassificationPage: React.FC = () => {
               <CardDescription>Veuillez fournir votre clé API Google Gemini.</CardDescription>
             </CardHeader>
             <CardContent>
-              <Input
-                type="password"
-                placeholder="Entrez votre clé API ici..."
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="max-w-md"
-              />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="api-key" className="block text-sm font-medium mb-1">Clé API Gemini</label>
+                  <Input
+                    id="api-key"
+                    type="password"
+                    placeholder="Entrez votre clé API ici..."
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label htmlFor="rpm-limit" className="block text-sm font-medium mb-1">Limite de Requêtes/Minute (RPM)</label>
+                  <Input
+                    id="rpm-limit"
+                    type="number"
+                    value={rpm}
+                    onChange={(e) => setRpm(Number(e.target.value))}
+                  />
+                </div>
+              </div>
             </CardContent>
           </Card>
 
@@ -147,7 +181,19 @@ const ClassificationPage: React.FC = () => {
             </Alert>
           )}
 
-          {results.length > 0 && (
+          {isLoading && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center"><Timer className="mr-2 h-5 w-5" />Progression du Traitement</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Progress value={progress} className="w-full" />
+                <p className="text-center text-sm text-muted-foreground mt-2">{statusText}</p>
+              </CardContent>
+            </Card>
+          )}
+
+          {results.length > 0 && !isLoading && (
             <Card>
               <CardHeader>
                 <CardTitle>Résultats de la Classification</CardTitle>

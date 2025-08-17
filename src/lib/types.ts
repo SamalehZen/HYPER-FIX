@@ -43,3 +43,11 @@ export interface GeminiResponse {
     sous_famille_code: string;
     sous_famille_name: string;
 }
+
+// --- Types for Progress and Rate Limiting ---
+
+export type ProgressStatus =
+  | { type: 'PROGRESS'; current: number; total: number; }
+  | { type: 'PAUSED'; countdown: number; }
+  | { type: 'ERROR'; message: string; }
+  | { type: 'COMPLETE'; };
