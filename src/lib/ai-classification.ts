@@ -254,37 +254,37 @@ const getHierarchyAsText = (hierarchy: ClassificationNode[]): string => {
     return lines.join('\n');
 };
 
-export const classifyProducts = async (products: Product[], hierarchy: ClassificationNode[], apiKey: string): Promise<ClassifiedProduct[]> => {
+export const classifyProducts = async (
+    products: Product[],
+    hierarchy: ClassificationNode[],
+    apiKey: string,
+    rpm: number,
+    onProgress: (status: import("./types").ProgressStatus) => void
+): Promise<ClassifiedProduct[]> => {
     if (!apiKey) {
         throw new Error("API key is required.");
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: "gemini-1.5-flash",
-    });
-
+    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
     const generationConfig: GenerationConfig = {
-      responseMimeType: "application/json",
-      responseSchema: {
-        type: "object",
-        properties: {
-            secteur_code: { type: "string" },
-            secteur_name: { type: "string" },
-            rayon_code: { type: "string" },
-            rayon_name: { type: "string" },
-            famille_code: { type: "string" },
-            famille_name: { type: "string" },
-            sous_famille_code: { type: "string" },
-            sous_famille_name: { type: "string" },
+        responseMimeType: "application/json",
+        responseSchema: {
+            type: "object",
+            properties: {
+                secteur_code: { type: "string" },
+                secteur_name: { type: "string" },
+                rayon_code: { type: "string" },
+                rayon_name: { type: "string" },
+                famille_code: { type: "string" },
+                famille_name: { type: "string" },
+                sous_famille_code: { type: "string" },
+                sous_famille_name: { type: "string" },
+            },
+            required: ["secteur_code", "secteur_name", "rayon_code", "rayon_name", "famille_code", "famille_name", "sous_famille_code", "sous_famille_name"]
         },
-        required: ["secteur_code", "secteur_name", "rayon_code", "rayon_name", "famille_code", "famille_name", "sous_famille_code", "sous_famille_name"]
-      },
-      temperature: 0.2,
-      topP: 0.9,
-      topK: 40,
+        temperature: 0.2, topP: 0.9, topK: 40,
     };
-
     const safetySettings = [
       { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
       { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -294,11 +294,40 @@ export const classifyProducts = async (products: Product[], hierarchy: Classific
 
     const hierarchyText = getHierarchyAsText(hierarchy);
     const classifiedProducts: ClassifiedProduct[] = [];
+    const requestTimestamps: number[] = [];
+    const sixtySeconds = 60 * 1000;
 
-    for (const product of products) {
+    for (let i = 0; i < products.length; i++) {
+        const product = products[i];
+
+        // --- Rate Limiting Logic ---
+        const now = Date.now();
+        // Remove timestamps older than 60 seconds
+        while (requestTimestamps.length > 0 && now - requestTimestamps[0] > sixtySeconds) {
+            requestTimestamps.shift();
+        }
+
+        if (requestTimestamps.length >= rpm) {
+            const timeSinceOldestRequest = now - requestTimestamps[0];
+            const timeToWait = sixtySeconds - timeSinceOldestRequest;
+
+            // Countdown logic
+            let countdown = Math.ceil(timeToWait / 1000);
+            while (countdown > 0) {
+                onProgress({ type: 'PAUSED', countdown });
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                countdown--;
+            }
+            // Final wait for the remaining milliseconds
+            await new Promise(resolve => setTimeout(resolve, timeToWait % 1000));
+        }
+        // --- End Rate Limiting Logic ---
+
         try {
-            const prompt = buildPrompt(product.description, hierarchyText);
+            onProgress({ type: 'PROGRESS', current: i + 1, total: products.length });
+            requestTimestamps.push(Date.now());
 
+            const prompt = buildPrompt(product.description, hierarchyText);
             const result = await model.generateContent({
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
                 generationConfig,
@@ -320,6 +349,7 @@ export const classifyProducts = async (products: Product[], hierarchy: Classific
 
         } catch (error) {
             console.error(`Failed to classify product: "${product.description}"`, error);
+            onProgress({ type: 'ERROR', message: `Erreur pour: ${product.description}` });
             classifiedProducts.push({
                 description: product.description,
                 classification: UNCLASSIFIED_RESULT,
@@ -327,5 +357,6 @@ export const classifyProducts = async (products: Product[], hierarchy: Classific
         }
     }
 
+    onProgress({ type: 'COMPLETE' });
     return classifiedProducts;
 };
