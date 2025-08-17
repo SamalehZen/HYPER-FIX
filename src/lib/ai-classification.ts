@@ -8,6 +8,11 @@ import { supabase } from './supabase';
 import { getCyrusStructure, saveClassification } from './database';
 import type { CyrusClassification } from './supabase';
 
+// --- NOUVELLE LOGIQUE DE CLASSIFICATION (GEMINI) ---
+import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold, GenerationConfig, GenerativeModel, InputContent } from "@google/generative-ai";
+import type { Product, ClassifiedProduct, ClassificationNode, GeminiResponse, ClassificationPath } from './types';
+
+
 export interface AIClassificationResult {
   secteur: string;
   rayon: string; 
@@ -209,3 +214,118 @@ export class AIClassificationService {
 }
 
 export default AIClassificationService;
+
+
+// --- NOUVELLE LOGIQUE DE CLASSIFICATION (GEMINI) ---
+
+const UNCLASSIFIED_CATEGORY = { code: "N/A", name: "NON CLASSIFIÉ" };
+const UNCLASSIFIED_RESULT: ClassificationPath = {
+    secteur: UNCLASSIFIED_CATEGORY,
+    rayon: UNCLASSIFIED_CATEGORY,
+    famille: UNCLASSIFIED_CATEGORY,
+    sousFamille: UNCLASSIFIED_CATEGORY,
+};
+
+const buildPrompt = (productDescription: string, hierarchyText: string): string => {
+    return `
+    You are an expert product classifier for a supermarket. Your task is to classify a given product description into a predefined hierarchical structure.
+
+    This is the complete classification hierarchy:
+    --- HIERARCHY START ---
+    ${hierarchyText}
+    --- HIERARCHY END ---
+
+    Rules:
+    1. Analyze the product description: "${productDescription}".
+    2. Find the most appropriate complete path from the hierarchy: Secteur > Rayon > Famille > Sous-famille.
+    3. You MUST return the full path, including codes and names for all four levels.
+    4. If no suitable classification can be found with high confidence, you MUST return "NON CLASSIFIÉ" for all names and "N/A" for all codes.
+    5. Respond ONLY with the JSON object. Do not add any extra text or explanations.
+    `;
+};
+
+const getHierarchyAsText = (hierarchy: ClassificationNode[]): string => {
+    const lines: string[] = [];
+    // This creates a simpler text representation for the prompt.
+    hierarchy.forEach(node => {
+        const indent = "  ".repeat(node.level);
+        lines.push(`${indent}${node.code} ${node.name}`);
+    });
+    return lines.join('\n');
+};
+
+export const classifyProducts = async (products: Product[], hierarchy: ClassificationNode[], apiKey: string): Promise<ClassifiedProduct[]> => {
+    if (!apiKey) {
+        throw new Error("API key is required.");
+    }
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+    });
+
+    const generationConfig: GenerationConfig = {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: "object",
+        properties: {
+            secteur_code: { type: "string" },
+            secteur_name: { type: "string" },
+            rayon_code: { type: "string" },
+            rayon_name: { type: "string" },
+            famille_code: { type: "string" },
+            famille_name: { type: "string" },
+            sous_famille_code: { type: "string" },
+            sous_famille_name: { type: "string" },
+        },
+        required: ["secteur_code", "secteur_name", "rayon_code", "rayon_name", "famille_code", "famille_name", "sous_famille_code", "sous_famille_name"]
+      },
+      temperature: 0.2,
+      topP: 0.9,
+      topK: 40,
+    };
+
+    const safetySettings = [
+      { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+      { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+    ];
+
+    const hierarchyText = getHierarchyAsText(hierarchy);
+    const classifiedProducts: ClassifiedProduct[] = [];
+
+    for (const product of products) {
+        try {
+            const prompt = buildPrompt(product.description, hierarchyText);
+
+            const result = await model.generateContent({
+                contents: [{ role: "user", parts: [{ text: prompt }] }],
+                generationConfig,
+                safetySettings,
+            });
+
+            const jsonText = result.response.text();
+            const responseData = JSON.parse(jsonText) as GeminiResponse;
+
+            classifiedProducts.push({
+                description: product.description,
+                classification: {
+                    secteur: { code: responseData.secteur_code, name: responseData.secteur_name },
+                    rayon: { code: responseData.rayon_code, name: responseData.rayon_name },
+                    famille: { code: responseData.famille_code, name: responseData.famille_name },
+                    sousFamille: { code: responseData.sous_famille_code, name: responseData.sous_famille_name },
+                },
+            });
+
+        } catch (error) {
+            console.error(`Failed to classify product: "${product.description}"`, error);
+            classifiedProducts.push({
+                description: product.description,
+                classification: UNCLASSIFIED_RESULT,
+            });
+        }
+    }
+
+    return classifiedProducts;
+};

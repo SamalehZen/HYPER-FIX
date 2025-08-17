@@ -122,7 +122,7 @@ export function HeroSection({
 
   return (
     <div
-      className={`${compact ? 'min-h-[60vh]' : 'min-h-screen'} ${backgroundClass} ${textColorClass} font-primary overflow-hidden relative w-full`}
+      className={`${compact ? 'min-h-[60vh]' : ''} ${backgroundClass} ${textColorClass} font-primary overflow-hidden relative w-full`}
     >
       {/* Background Grid */}
       {showBackground && (
@@ -309,7 +309,7 @@ export function HeroSection({
         </>
       )}
 
-      <div className={`relative z-10 ${compact ? 'min-h-[60vh]' : 'min-h-screen'} flex flex-col justify-center items-center px-8 py-12 md:px-16 ${compact ? 'md:py-16' : 'md:py-20'}`}>
+      <div className={`relative z-10 ${compact ? 'min-h-[60vh]' : ''} flex flex-col justify-center items-center px-8 py-12 md:px-16 ${compact ? 'md:py-16' : 'md:py-20'}`}>
         <div className="text-center max-w-5xl mx-auto">
           {subtitle && (
             <div className="mb-8">

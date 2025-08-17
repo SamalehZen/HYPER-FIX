@@ -1,41 +1,183 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Layout } from '../components/layout/Layout';
 import { HeroSection } from '../components/layout/HeroSection';
-import ClassificationService from '../components/services/ClassificationService';
 import { Button } from '../components/ui/button';
-import { Lock } from 'lucide-react';
+import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '../components/ui/alert';
+import { Loader2, Key, ListTree, Upload, Download } from 'lucide-react';
+
+// Import the new services and data
+import { CLASSIFICATION_HIERARCHY } from '../lib/classification-data';
+import { parseHierarchy } from '../lib/classification-parser';
+import { classifyProducts } from '../lib/ai-classification';
+import { processExcelFile, exportResultsToExcel } from '../lib/excel-utils'; // Import export util
+import type { ClassifiedProduct, Product } from '../lib/types';
 
 const ClassificationPage: React.FC = () => {
+  const [apiKey, setApiKey] = useState('');
+  const [productInput, setProductInput] = useState('');
+  const [results, setResults] = useState<ClassifiedProduct[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFileImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setError(null);
+    try {
+        const descriptions = await processExcelFile(file);
+        setProductInput(descriptions.join('\n'));
+    } catch (err) {
+        console.error(err);
+        setError("Échec du traitement du fichier Excel. Assurez-vous que le fichier est valide et que la première colonne contient les libellés.");
+    }
+    // Reset file input so user can upload the same file again
+    event.target.value = '';
+  };
+
+  const handleExport = () => {
+    exportResultsToExcel(results);
+  };
+
+  const handleClassify = async () => {
+    if (!apiKey) {
+      setError('Veuillez entrer une clé API.');
+      return;
+    }
+    if (!productInput.trim()) {
+      setError('Veuillez entrer au moins un libellé de produit.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setResults([]);
+
+    try {
+      // Prepare the data
+      const products: Product[] = productInput.split('\n').filter(line => line.trim() !== '').map(line => ({ description: line.trim() }));
+      const hierarchy = parseHierarchy(CLASSIFICATION_HIERARCHY);
+
+      // Call the AI service
+      const classifiedResults = await classifyProducts(products, hierarchy, apiKey);
+      setResults(classifiedResults);
+
+    } catch (e) {
+      console.error(e);
+      setError(e instanceof Error ? e.message : 'Une erreur inconnue est survenue.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <Layout currentPage="classification">
-      {/* Hero Section compacte pour les pages de service */}
       <HeroSection
         title="Classification CYRUS IA"
         subtitle="Intelligence Artificielle"
-        description="Classification automatique selon votre structure personnalisée : Secteur → Rayon → Famille → Sous-famille par IA avancée."
+        description="Entrez votre clé API Gemini et une liste de libellés de produits pour obtenir leur classification hiérarchique."
         compact={true}
         showBackground={false}
       />
       
-      {/* Contenu principal */}
-      <div className="container mx-auto px-4 py-8">
-        {/* Overlay "Coming Soon" */}
-        <div className="relative">
-          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 flex items-center justify-center rounded-lg">
-            <div className="text-center p-8 bg-card border border-border rounded-lg shadow-lg max-w-md">
-              <Lock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-2xl font-bold text-primary mb-2">Bientôt disponible</h3>
-              <p className="text-muted-foreground mb-6">
-                Le service de classification IA est en cours de développement.
-              </p>
-              <Button variant="outline" disabled>
-                Coming Soon
-              </Button>
-            </div>
+      <div className="container mx-auto px-4 py-8 max-w-5xl">
+        <div className="grid gap-8">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center"><Key className="mr-2 h-5 w-5" />Étape 1: Configuration</CardTitle>
+              <CardDescription>Veuillez fournir votre clé API Google Gemini.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Input
+                type="password"
+                placeholder="Entrez votre clé API ici..."
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                className="max-w-md"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center"><ListTree className="mr-2 h-5 w-5" />Étape 2: Libellés à Classifier</CardTitle>
+              <CardDescription>Entrez les libellés manuellement ou importez un fichier Excel.</CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <Textarea
+                placeholder="Exemple:\n1KG PETIT POIS CAROT.CRF CLASS\n492G X6 BATS CHOCO AU LAIT PPB"
+                value={productInput}
+                onChange={(e) => setProductInput(e.target.value)}
+                rows={10}
+              />
+              <div className="flex items-center space-x-4">
+                <div className="flex-1">
+                    <label htmlFor="excel-upload" className="sr-only">Importer Excel</label>
+                    <Input id="excel-upload" type="file" className="w-full max-w-xs" accept=".xlsx, .xls" onChange={handleFileImport} />
+                </div>
+                <Button variant="outline" disabled={results.length === 0} onClick={handleExport}>
+                  <Download className="mr-2 h-4 w-4" />
+                  Exporter les Résultats
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-center">
+            <Button onClick={handleClassify} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Classification en cours...
+                </>
+              ) : (
+                'Lancer la Classification'
+              )}
+            </Button>
           </div>
-          <div className="blur-sm">
-            <ClassificationService />
-          </div>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertTitle>Erreur</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          {results.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Résultats de la Classification</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Libellé Original</TableHead>
+                      <TableHead>Secteur</TableHead>
+                      <TableHead>Rayon</TableHead>
+                      <TableHead>Famille</TableHead>
+                      <TableHead>Sous-Famille</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {results.map((result, index) => (
+                      <TableRow key={index}>
+                        <TableCell className="font-medium">{result.description}</TableCell>
+                        <TableCell>{result.classification.secteur.name} ({result.classification.secteur.code})</TableCell>
+                        <TableCell>{result.classification.rayon.name} ({result.classification.rayon.code})</TableCell>
+                        <TableCell>{result.classification.famille.name} ({result.classification.famille.code})</TableCell>
+                        <TableCell>{result.classification.sousFamille.name} ({result.classification.sousFamille.code})</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </Layout>
