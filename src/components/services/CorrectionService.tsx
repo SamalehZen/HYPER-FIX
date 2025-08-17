@@ -9,7 +9,7 @@ import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Separator } from '../ui/separator';
 import { Download, Upload, Copy, Check, X, RefreshCw, FileText } from 'lucide-react';
-import { correctLabel, correctLabels, correctLabelsPipeline, exportCorrections, type CorrectionResult } from '../../lib/correction';
+import { correctLabelsWithGemini, exportCorrections, type CorrectionResult } from '../../lib/correction';
 import { saveCorrection } from '../../lib/database';
 import { useTheme } from '../../lib/theme-context';
 import * as XLSX from 'xlsx';
@@ -34,7 +34,7 @@ const CorrectionService: React.FC = () => {
         .map(line => line.trim())
         .filter(line => line.length > 0);
       
-      const correctionResults = correctLabelsPipeline(labels);
+      const correctionResults = await correctLabelsWithGemini(labels);
       setResults(correctionResults);
       
       // Sauvegarder automatiquement en base
