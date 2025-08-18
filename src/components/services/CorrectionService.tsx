@@ -8,17 +8,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Separator } from '../ui/separator';
-import { Download, Upload, Copy, Check, X, RefreshCw, FileText } from 'lucide-react';
+import { Download, Upload, Copy, Check, X, RefreshCw, FileText, Shield, KeyRound, Save, Terminal } from 'lucide-react';
 import { correctLabelsWithGemini, correctLabelOffline, exportCorrections, type CorrectionResult } from '../../lib/correction';
 import { saveCorrection } from '../../lib/database';
 import { useTheme } from '../../lib/theme-context';
 import * as XLSX from 'xlsx';
-
-import { Shield, KeyRound, Save } from 'lucide-react';
 import { Switch } from '../ui/switch';
 import { Label } from '../ui/label';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { Terminal } from 'lucide-react';
 
 const CorrectionService: React.FC = () => {
   const { theme } = useTheme();
@@ -314,7 +310,6 @@ const CorrectionService: React.FC = () => {
                 setIsAiMode(checked);
                 localStorage.setItem('isAiMode', String(checked));
               }}
-              aria-readonly
             />
           </div>
 

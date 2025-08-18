@@ -37,7 +37,8 @@ export const RouterProvider: React.FC<RouterProviderProps> = ({
   routes, 
   initialPath = '/' 
 }) => {
-  const [currentPath, setCurrentPath] = useState(initialPath);
+  // Initialiser le chemin avec le chemin actuel de la fenêtre pour gérer les liens profonds
+  const [currentPath, setCurrentPath] = useState(window.location.pathname || initialPath);
 
   const navigate = (path: string) => {
     setCurrentPath(path);
