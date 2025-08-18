@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { BorderBeam } from '../ui/border-beam';
 import { Textarea } from '../ui/textarea';
@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Separator } from '../ui/separator';
-import { Download, Upload, Copy, Check, X, RefreshCw, FileText, Shield, KeyRound, Save, Terminal } from 'lucide-react';
+import { Download, Upload, Copy, Check, X, RefreshCw, FileText, Shield, KeyRound, Save } from 'lucide-react';
 import { correctLabelsWithGemini, correctLabelOffline, exportCorrections, type CorrectionResult } from '../../lib/correction';
 import { saveCorrection } from '../../lib/database';
 import { useTheme } from '../../lib/theme-context';
@@ -30,13 +30,17 @@ const CorrectionService: React.FC = () => {
 
   // Charger la configuration depuis le localStorage au montage
   useEffect(() => {
-    const savedApiKey = localStorage.getItem('googleApiKey');
-    const savedAiMode = localStorage.getItem('isAiMode');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-    }
-    if (savedAiMode) {
-      setIsAiMode(savedAiMode === 'true');
+    try {
+      const savedApiKey = localStorage.getItem('googleApiKey');
+      const savedAiMode = localStorage.getItem('isAiMode');
+      if (savedApiKey) {
+        setApiKey(savedApiKey);
+      }
+      if (savedAiMode) {
+        setIsAiMode(savedAiMode === 'true');
+      }
+    } catch (e) {
+      console.error("Could not access localStorage. Running in a non-browser environment?");
     }
   }, []);
   
@@ -88,6 +92,12 @@ const CorrectionService: React.FC = () => {
       
     } catch (error) {
       console.error('Erreur lors de la correction:', error);
+      setResults(inputText.split('\n').filter(line => line.trim()).map(l => ({
+        original: l,
+        corrected: "Erreur de correction",
+        rules: [error.message],
+        confidence: 0
+      })))
     } finally {
       setIsProcessing(false);
     }

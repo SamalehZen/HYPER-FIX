@@ -382,12 +382,6 @@ export function testPipelineAlgorithm(): void {
 import { correctLabels as correctLabelsWithGeminiAPI } from './ai-correction';
 
 /**
- * Récupère la clé API Google depuis les variables d'environnement.
- * Gère les contextes Vite (client) et Node.js (serveur/script).
- * @returns La clé API.
- * @throws Une erreur si la clé n'est pas trouvée.
- */
-/**
  * Corrige une liste de libellés en utilisant le service Google Gemini.
  * C'est la fonction de pont entre l'UI et le service IA.
  * @param labels La liste des libellés à corriger.
