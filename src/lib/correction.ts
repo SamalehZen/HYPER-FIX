@@ -95,7 +95,10 @@ export const CORRECTION_RULES: CorrectionRule[] = [
 
 // Liste des marques connues
 export const KNOWN_BRANDS = [
-  'CARREFOUR', 'BONDUELLE', 'SIMPL', 'SRP', 'LOTUS', 'TWIX', 'BOUNTY', 'NUTELLA',
+  // Marques de la nouvelle spec
+  'BEUCHAT', 'PERRIER', 'VOLVIC', 'OASIS', 'CRF', 'SIMPL', 'PIERRE CARD', 'TRAVEL WORLD', 'SPORT AND FUN', 'NECTAR OF BEAUTY',
+  // Anciennes marques
+  'CARREFOUR', 'BONDUELLE', 'SRP', 'LOTUS', 'TWIX', 'BOUNTY', 'NUTELLA',
   'KINDER', 'RAFFAELLO', 'SNICKERS', 'CRF SENS', 'CRF EXTRA', 'CRF CLASSIC', 'CRF CLASS',
   'CRF BIO', 'CRF OR', 'CRF EX', 'CRF CL', 'CRF E', 'CRF C', 'CRF S', 'CRFM',
   'CRFCLA', 'CRFCL', 'CRFC', 'CRFEX'
@@ -372,4 +375,162 @@ export function testPipelineAlgorithm(): void {
     console.log(`Confidence: ${result.confidence}%`);
     console.log(`Rules applied: ${result.rules.join(', ')}`);
   });
+}
+
+
+// --- NOUVELLE LOGIQUE DE CORRECTION VIA L'API GOOGLE GEMINI ---
+import { correctLabels as correctLabelsWithGeminiAPI } from './ai-correction';
+
+/**
+ * Corrige une liste de libellés en utilisant le service Google Gemini en mode lot.
+ * C'est la fonction de pont entre l'UI et le service IA.
+ * @param labels La liste des libellés à corriger.
+ * @param apiKey La clé API Google fournie par l'utilisateur.
+ * @returns Une promesse qui se résout en un tableau de CorrectionResult.
+ */
+export async function correctLabelsWithGemini(labels: string[], apiKey: string): Promise<CorrectionResult[]> {
+  if (!labels || labels.length === 0) {
+    return [];
+  }
+
+  if (!apiKey) {
+    throw new Error("La clé API n'a pas été fournie.");
+  }
+
+  try {
+    const aiResults = await correctLabelsWithGeminiAPI(labels, apiKey);
+
+    // Mapper les résultats de l'IA au format attendu par le frontend
+    return labels.map(originalLabel => {
+      const matchingAiResult = aiResults.find(res => res["Libellé Original"] === originalLabel);
+
+      if (matchingAiResult && matchingAiResult["Libellé Corrigé"]) {
+        return {
+          original: originalLabel,
+          corrected: matchingAiResult["Libellé Corrigé"],
+          rules: ['gemini_correction'],
+          confidence: 95,
+        };
+      } else {
+        // Si l'IA n'a pas retourné de correction pour ce libellé (cas du traitement par lot)
+        return {
+          original: originalLabel,
+          corrected: originalLabel,
+          rules: ['gemini_no_correction'],
+          confidence: 10,
+        };
+      }
+    });
+
+  } catch (error) {
+    console.error("Erreur lors de l'appel au service de correction Gemini:", error);
+    // En cas d'échec global de l'API, retourner les originaux avec une erreur
+    return labels.map(label => ({
+      original: label,
+      corrected: label,
+      rules: ['api_error', error.message],
+      confidence: 0,
+    }));
+  }
+}
+
+
+// --- NOUVELLE LOGIQUE DE CORRECTION HORS LIGNE (PROGRAMMATIQUE) ---
+
+const QF_PATTERNS = [
+  // Packs / Lots (plus spécifiques en premier)
+  /(\b\d+\s*X\s*\d+([,.]\d+)?\s*[A-Z]+\b)/gi, // e.g., 6X33CL, 10X1.5L
+  /(\bLOT DE \d+\b)/gi,
+  /(\bX\d+\b)/gi,
+  /(\b\d+\s*RLX\b)/gi,
+  // Dimensions / Tailles
+  /(\b\d+(\s*[/]\s*\d+)+\s*[A-Z]*\b)/gi, // e.g., 50/70 CM or 38/41
+  /(\b\d+\s*ANS?\b)/gi,
+  /(\b(XS|S|M|L|XL|XXL)\b)/gi,
+  // Volumes / Poids
+  /(\d+([,.]\d+)?\s*(L|ML|CL|G|KG)[S]?\b)/gi,
+  // Codes Packaging
+  /(\b(PET|BLE|BTE|BRK|CAN)\b)/gi,
+  // Pourcentages
+  /(\b\d+%)/gi,
+];
+
+// Combine all patterns into one
+const QF_REGEX = new RegExp(QF_PATTERNS.map(r => r.source).join('|'), 'gi');
+
+/**
+ * Corrige un libellé en utilisant la "Stratégie Dure" de manière programmatique.
+ * @param originalLabel Le libellé brut.
+ * @returns Un objet CorrectionResult.
+ */
+export function correctLabelOffline(originalLabel: string): CorrectionResult {
+  let workLabel = originalLabel.trim();
+
+  // Pré-traitement pour séparer les codes packaging collés aux chiffres
+  workLabel = workLabel.replace(/\b(PET|BLE|BTE|BRK|CAN)(\d)/gi, '$1 $2');
+
+  // --- ÉTAPE 1 & 2 : Identification et Extraction ---
+
+  // 1. Extraire la MARQUE
+  let brand = '';
+  // Trier les marques par longueur pour éviter les correspondances partielles (ex: 'CRF' vs 'CRF SENS')
+  const sortedBrands = [...KNOWN_BRANDS].sort((a, b) => b.length - a.length);
+  for (const b of sortedBrands) {
+    // Utiliser une regex pour trouver la marque comme un mot entier, insensible à la casse
+    const brandRegex = new RegExp(`\\b${b}\\b`, 'i');
+    if (brandRegex.test(workLabel)) {
+      brand = b;
+      workLabel = workLabel.replace(brandRegex, '').trim();
+      break; // Prendre la première (et la plus longue) correspondance
+    }
+  }
+
+  // 2. Extraire QUANTITÉ/FORMAT
+  const quantitiesAndFormats: string[] = [];
+  let match;
+  while ((match = QF_REGEX.exec(workLabel)) !== null) {
+    // `match[0]` contient la correspondance complète
+    quantitiesAndFormats.push(match[0].trim());
+  }
+  // Nettoyer les correspondances de la chaîne de travail
+  workLabel = workLabel.replace(QF_REGEX, ' ').replace(/\s+/g, ' ').trim();
+
+  // 3. Le reste est la DESCRIPTION
+  let description = workLabel;
+
+  // --- ÉTAPE 3 : Normalisation Stricte ---
+
+  // Convertir tout en majuscules
+  brand = brand.toUpperCase();
+  description = description.toUpperCase();
+
+  // Normaliser les quantités
+  const normalizedQuantities = quantitiesAndFormats.map(qf => {
+    let normalized = qf.toUpperCase();
+    // Remplacer le point décimal par une virgule
+    normalized = normalized.replace(/(\d)\.(\d)/g, '$1,$2');
+    // Supprimer les points et les slashes superflus, puis nettoyer les espaces
+    normalized = normalized.replace(/[.\/]/g, ' ').replace(/\s+/g, ' ').trim();
+    return normalized;
+  });
+
+  // Normaliser la description
+  description = description.replace(/[.'-\/]/g, ' ').replace(/\s+/g, ' ').trim();
+  description = description.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
+  // --- ÉTAPE 4 : Recomposition Structurée ---
+  const finalParts = [
+    brand,
+    description,
+    ...normalizedQuantities
+  ];
+
+  const corrected = finalParts.filter(Boolean).join(' ');
+
+  return {
+    original: originalLabel,
+    corrected: corrected.trim(),
+    rules: ['offline_correction'],
+    confidence: 85, // Confiance fixe pour le mode hors ligne
+  };
 }
