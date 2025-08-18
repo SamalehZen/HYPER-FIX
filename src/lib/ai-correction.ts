@@ -12,19 +12,25 @@ interface GeminiCorrectionResponse {
 }
 
 /**
- * Construit le prompt pour la correction d'un seul libellé.
- * @param label Le libellé à corriger.
+ * Construit le prompt pour la correction de libellés en demandant une sortie JSON.
+ * @param labels Les libellés à corriger.
  * @returns Le prompt complet pour l'IA.
  */
-function buildCorrectionPrompt(label: string): string {
+function buildCorrectionPrompt(labels: string[]): string {
+  const labelsAsJsonString = JSON.stringify(labels.map(l => ({ "Libellé Original": l })), null, 2);
+
   return `
-TA MISSION : Tu es un Spécialiste de la Normalisation de Données. Ta mission est de transformer le libellé de produit brut fourni en un format standardisé, en suivant une stratégie rigoureuse.
+TA MISSION : Tu es un Spécialiste de la Normalisation de Données. Ta mission est de transformer une liste de libellés de produits bruts en un format standardisé, en suivant une stratégie rigoureuse.
 
-FORMAT DE SORTIE : Réponds avec un unique objet JSON. Cet objet doit contenir une seule clé "corrections", qui est un tableau contenant un unique objet. Cet objet doit avoir deux clés : "Libellé Original" et "Libellé Corrigé". N'ajoute aucun commentaire ou formatage en dehors de cet objet JSON.
+FORMAT DE SORTIE : Réponds avec un unique objet JSON. Cet objet doit contenir une seule clé "corrections", qui est un tableau d'objets. Chaque objet du tableau doit avoir deux clés : "Libellé Original" et "Libellé Corrigé". N'ajoute aucun commentaire ou formatage en dehors de cet objet JSON.
 
-Exemple de format de sortie pour l'entrée "2.2L LESS.LIQ BLEU.MED.CRF EXP":
+Exemple de format de sortie:
 {
   "corrections": [
+    {
+      "Libellé Original": "LOT DE 3 VALISES 50/60/70 CM PIERRE CARD",
+      "Libellé Corrigé": "PIERRE CARD LOT DE 3 VALISES 50/60/70 CM"
+    },
     {
       "Libellé Original": "2.2L LESS.LIQ BLEU.MED.CRF EXP",
       "Libellé Corrigé": "CRF LESS LIQ BLEU MED EXP 2,2L"
@@ -34,7 +40,7 @@ Exemple de format de sortie pour l'entrée "2.2L LESS.LIQ BLEU.MED.CRF EXP":
 
 STRATÉGIE DE TRAITEMENT OBLIGATOIRE :
 
-1.  **IDENTIFICATION DES COMPOSANTS** : Pour le libellé, identifie et isole les 3 blocs suivants :
+1.  **IDENTIFICATION DES COMPOSANTS** : Pour chaque libellé, identifie et isole les 3 blocs suivants :
     *   **BLOC MARQUE** : Identifie la marque (ex: PERRIER, CRF, SIMPL, PIERRE CARD, SPORT AND FUN). Elle est souvent en fin de libellé.
     *   **BLOC QUANTITÉ/FORMAT** : Identifie tout ce qui est une mesure, un format ou un packaging (ex: 1.5L, 6X33CL, X20, PET, BLE, 4 AN, 50/70 CM). Ce bloc est inséparable.
     *   **BLOC DESCRIPTION** : Tout le reste.
@@ -52,23 +58,23 @@ RÈGLES IMPÉRATIVES (INTERDICTIONS) :
 *   NE JAMAIS MODIFIER L'ORDRE DES MOTS au sein du BLOC DESCRIPTION.
 *   NE JAMAIS INVENTER D'INFORMATION. Si une marque n'est pas identifiable, n'en ajoute pas.
 
-LIBELLÉ À TRAITER :
-"${label}"
+LISTE DES LIBELLÉS À TRAITER :
+${labelsAsJsonString}
 `;
 }
 
 /**
- * Appelle l'API Gemini pour corriger un seul libellé.
- * @param label Le libellé à corriger.
+ * Appelle l'API Gemini pour corriger une liste de libellés.
+ * @param labels La liste des libellés à corriger.
  * @param apiKey La clé API pour le service Google AI.
- * @returns Une promesse qui se résout avec le résultat de la correction.
+ * @returns Une promesse qui se résout avec la liste des résultats de correction.
  */
-export async function correctLabel(label: string, apiKey: string): Promise<CorrectionAIResult> {
+export async function correctLabels(labels: string[], apiKey: string): Promise<CorrectionAIResult[]> {
   if (!apiKey) {
     throw new Error("La clé API Google est requise.");
   }
-  if (!label) {
-    return { "Libellé Original": "", "Libellé Corrigé": "" };
+  if (!labels || labels.length === 0) {
+    return [];
   }
 
   const genAI = new GoogleGenerativeAI(apiKey);
@@ -86,7 +92,7 @@ export async function correctLabel(label: string, apiKey: string): Promise<Corre
     { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
   ];
 
-  const prompt = buildCorrectionPrompt(label);
+  const prompt = buildCorrectionPrompt(labels);
 
   try {
     const result = await model.generateContent({
@@ -98,15 +104,11 @@ export async function correctLabel(label: string, apiKey: string): Promise<Corre
     const responseText = result.response.text();
     const responseJson: GeminiCorrectionResponse = JSON.parse(responseText);
 
-    if (!responseJson.corrections || responseJson.corrections.length === 0) {
-        throw new Error("La réponse de l'IA est malformée ou ne contient pas de correction.");
-    }
-
-    return responseJson.corrections[0];
+    return responseJson.corrections;
 
   } catch (error) {
-    console.error(`Erreur lors de la correction du libellé "${label}" via l'API Gemini:`, error);
-    // En cas d'erreur, retourner l'original pour ne pas bloquer le lot
-    return { "Libellé Original": label, "Libellé Corrigé": label };
+    console.error("Erreur lors de la correction des libellés via l'API Gemini:", error);
+    // En cas d'erreur, retourner un tableau vide ou gérer l'erreur comme il se doit
+    throw new Error(`L'appel à l'API Gemini a échoué: ${error.message}`);
   }
 }
