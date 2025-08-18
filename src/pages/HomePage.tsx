@@ -6,6 +6,7 @@ import { ArrowRight, Cpu, Database, BarChart3, Shield, Zap, Target } from "lucid
 import { useNavigate } from "../lib/router";
 import { useTheme } from "../lib/theme-context";
 import { TrustedBy } from "../components/layout/TrustedBy";
+import { AnimatedTestimonialsDemo } from "../components/layout/AnimatedTestimonialsDemo";
 
 export default function HomePage() {
   const { theme } = useTheme();
@@ -282,6 +283,8 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <AnimatedTestimonialsDemo />
 
       {/* Section CTA finale */}
       <section className={`py-20 px-4 border-t ${theme === 'dark' ? 'border-[#3a3e36]/30' : 'border-[#c8b4a0]/30'}`}>
