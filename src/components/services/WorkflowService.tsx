@@ -10,19 +10,7 @@ import { ArrowRight, Play, Download, Copy, RefreshCw, CheckCircle, AlertCircle, 
 import { correctLabel } from '../../lib/correction';
 import { useTheme } from '../../lib/theme-context';
 import * as XLSX from 'xlsx';
-import RadialOrbitalTimeline from '../ui/radial-orbital-timeline';
-
-interface TimelineItem {
-  id: number;
-  title: string;
-  date: string;
-  content: string;
-  category: string;
-  icon: React.ElementType;
-  relatedIds: number[];
-  status: "completed" | "in-progress" | "pending";
-  energy: number;
-}
+import RadialOrbitalTimeline, { TimelineItem } from '../ui/RadialOrbitalTimeline';
 
 interface WorkflowResult {
   original: string;
@@ -380,7 +368,7 @@ const WorkflowService: React.FC = () => {
           <CardHeader>
             <CardTitle>Progression du Workflow</CardTitle>
           </CardHeader>
-          <CardContent className="h-[500px] p-0 bg-black rounded-lg">
+          <CardContent className="h-[600px] p-0 bg-black rounded-lg">
             <RadialOrbitalTimeline timelineData={timelineData} />
           </CardContent>
         </Card>
