@@ -302,7 +302,7 @@
     @apply bg-background text-foreground font-sans;
     scroll-behavior: smooth;
   }
-  
+
   html {
     scroll-behavior: smooth;
   }

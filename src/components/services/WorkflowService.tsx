@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -6,17 +6,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Separator } from '../ui/separator';
-import { ArrowRight, Play, Download, Copy, RefreshCw, CheckCircle, AlertCircle, Zap, Brain, Calculator } from 'lucide-react';
+import { ArrowRight, Play, Download, Copy, RefreshCw, CheckCircle, AlertCircle, Zap, Brain, Calculator, FileInput } from 'lucide-react';
 import { correctLabel } from '../../lib/correction';
 import { useTheme } from '../../lib/theme-context';
 import * as XLSX from 'xlsx';
+import RadialOrbitalTimeline from '../ui/radial-orbital-timeline';
 
-interface WorkflowStep {
-  id: string;
-  name: string;
-  status: 'pending' | 'processing' | 'completed' | 'error';
-  icon: React.ComponentType<{ className?: string }>;
-  data?: any;
+interface TimelineItem {
+  id: number;
+  title: string;
+  date: string;
+  content: string;
+  category: string;
+  icon: React.ElementType;
+  relatedIds: number[];
+  status: "completed" | "in-progress" | "pending";
+  energy: number;
 }
 
 interface WorkflowResult {
@@ -42,13 +47,17 @@ const WorkflowService: React.FC = () => {
   const [results, setResults] = useState<WorkflowResult[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentStep, setCurrentStep] = useState<string>('');
-  const [steps, setSteps] = useState<WorkflowStep[]>([
-    { id: 'correction', name: 'Correction de libellés', status: 'pending', icon: Zap },
-    { id: 'classification', name: 'Classification CYRUS', status: 'pending', icon: Brain },
-    { id: 'nomenclature', name: 'Nomenclature douanière', status: 'pending', icon: Calculator },
-    { id: 'export', name: 'Export final', status: 'pending', icon: Download }
-  ]);
-  
+
+  const initialTimelineData: TimelineItem[] = useMemo(() => [
+    { id: 1, title: "Saisie", date: "Étape 1", content: "Saisie des données brutes par l'utilisateur.", category: "Input", icon: FileInput, relatedIds: [2], status: "pending", energy: 0 },
+    { id: 2, title: "Correction", date: "Étape 2", content: "Correction orthographique et sémantique des libellés.", category: "Processing", icon: Zap, relatedIds: [1, 3], status: "pending", energy: 0 },
+    { id: 3, title: "Classification", date: "Étape 3", content: "Classification des produits selon la structure CYRUS.", category: "AI", icon: Brain, relatedIds: [2, 4], status: "pending", energy: 0 },
+    { id: 4, title: "Nomenclature", date: "Étape 4", content: "Assignation du code douanier et des taxes associées.", category: "Rules", icon: Calculator, relatedIds: [3, 5], status: "pending", energy: 0 },
+    { id: 5, title: "Export", date: "Étape 5", content: "Génération du fichier de résultats final.", category: "Output", icon: Download, relatedIds: [4], status: "pending", energy: 0 },
+  ], []);
+
+  const [timelineData, setTimelineData] = useState<TimelineItem[]>(initialTimelineData);
+
   // Simulation de classification CYRUS
   const classifyProduct = useCallback((correctedLabel: string) => {
     const labelLower = correctedLabel.toLowerCase();
@@ -108,59 +117,58 @@ const WorkflowService: React.FC = () => {
   }, []);
   
   // Mise à jour du statut d'une étape
-  const updateStepStatus = useCallback((stepId: string, status: WorkflowStep['status']) => {
-    setSteps(prev => prev.map(step => 
-      step.id === stepId ? { ...step, status } : step
+  const updateStepStatus = useCallback((stepId: number, status: TimelineItem['status'], energy: number) => {
+    setTimelineData(prev => prev.map(item =>
+      item.id === stepId ? { ...item, status, energy } : item
     ));
-    if (status === 'processing') {
-      setCurrentStep(stepId);
+    if (status === 'in-progress') {
+      setCurrentStep(stepId.toString());
     }
   }, []);
-  
+
   // Traitement complet du workflow
   const processWorkflow = useCallback(async () => {
     if (!inputText.trim()) return;
-    
+
     setIsProcessing(true);
     setResults([]);
-    
-    // Réinitialiser les étapes
-    setSteps(prev => prev.map(step => ({ ...step, status: 'pending' })));
-    
+    setTimelineData(initialTimelineData);
+
     try {
       const labels = inputText
         .split('\n')
         .map(line => line.trim())
         .filter(line => line.length > 0);
-      
+
       const workflowResults: WorkflowResult[] = [];
-      
+
+      updateStepStatus(1, 'in-progress', 50);
+      await new Promise(resolve => setTimeout(resolve, 200));
+      updateStepStatus(1, 'completed', 100);
+
       for (const label of labels) {
         const startTime = Date.now();
-        
-        // Étape 1: Correction
-        updateStepStatus('correction', 'processing');
+
+        // Étape 2: Correction
+        updateStepStatus(2, 'in-progress', 50);
         await new Promise(resolve => setTimeout(resolve, 300));
-        
         const correction = correctLabel(label);
-        updateStepStatus('correction', 'completed');
-        
-        // Étape 2: Classification
-        updateStepStatus('classification', 'processing');
+        updateStepStatus(2, 'completed', 100);
+
+        // Étape 3: Classification
+        updateStepStatus(3, 'in-progress', 50);
         await new Promise(resolve => setTimeout(resolve, 400));
-        
         const classification = classifyProduct(correction.corrected);
-        updateStepStatus('classification', 'completed');
-        
-        // Étape 3: Nomenclature
-        updateStepStatus('nomenclature', 'processing');
+        updateStepStatus(3, 'completed', 100);
+
+        // Étape 4: Nomenclature
+        updateStepStatus(4, 'in-progress', 50);
         await new Promise(resolve => setTimeout(resolve, 200));
-        
         const nomenclature = getNomenclature(classification);
-        updateStepStatus('nomenclature', 'completed');
-        
+        updateStepStatus(4, 'completed', 100);
+
         const processingTime = Date.now() - startTime;
-        
+
         workflowResults.push({
           original: label,
           corrected: correction.corrected,
@@ -178,22 +186,23 @@ const WorkflowService: React.FC = () => {
           processing_time: processingTime
         });
       }
-      
-      // Étape 4: Export
-      updateStepStatus('export', 'processing');
+
+      // Étape 5: Export
+      updateStepStatus(5, 'in-progress', 50);
       await new Promise(resolve => setTimeout(resolve, 100));
-      
       setResults(workflowResults);
-      updateStepStatus('export', 'completed');
-      
+      updateStepStatus(5, 'completed', 100);
+
     } catch (error) {
       console.error('Erreur dans le workflow:', error);
-      updateStepStatus(currentStep, 'error');
+      if (currentStep) {
+        updateStepStatus(parseInt(currentStep), 'error', 0);
+      }
     } finally {
       setIsProcessing(false);
       setCurrentStep('');
     }
-  }, [inputText, correctLabel, classifyProduct, getNomenclature, updateStepStatus, currentStep]);
+  }, [inputText, correctLabel, classifyProduct, getNomenclature, updateStepStatus, currentStep, initialTimelineData]);
   
   // Export des résultats
   const exportResults = useCallback((format: 'csv' | 'json') => {
@@ -365,57 +374,14 @@ const WorkflowService: React.FC = () => {
         </CardContent>
       </Card>
       
-      {/* Étapes du workflow */}
+      {/* Timeline */}
       {(isProcessing || results.length > 0) && (
-        <Card>
+        <Card className="bg-transparent border-0 shadow-none">
           <CardHeader>
             <CardTitle>Progression du Workflow</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {steps.map((step, index) => {
-                const Icon = step.icon;
-                return (
-                  <div key={step.id} className="flex items-center space-x-3">
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-                      step.status === 'completed' ? (theme === 'dark' ? 'bg-green-600' : 'bg-green-700') :
-                      step.status === 'processing' ? (theme === 'dark' ? 'bg-blue-600' : 'bg-blue-700') :
-                      step.status === 'error' ? (theme === 'dark' ? 'bg-red-600' : 'bg-red-700') :
-                      theme === 'dark' ? 'bg-gray-600' : 'bg-gray-700'
-                    }`}>
-                      {step.status === 'completed' ? (
-                        <CheckCircle className="h-5 w-5 text-white" />
-                      ) : step.status === 'error' ? (
-                        <AlertCircle className="h-5 w-5 text-white" />
-                      ) : step.status === 'processing' ? (
-                        <RefreshCw className="h-5 w-5 text-white animate-spin" />
-                      ) : (
-                        <Icon className="h-5 w-5 text-white" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className={`text-sm font-medium ${
-                        step.status === 'completed' ? (theme === 'dark' ? 'text-green-600' : 'text-green-700') :
-                        step.status === 'processing' ? (theme === 'dark' ? 'text-blue-600' : 'text-blue-700') :
-                        step.status === 'error' ? (theme === 'dark' ? 'text-red-600' : 'text-red-700') :
-                        'text-muted-foreground'
-                      }`}>
-                        {step.name}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {step.status === 'completed' ? 'Terminé' :
-                         step.status === 'processing' ? 'En cours...' :
-                         step.status === 'error' ? 'Erreur' :
-                         'En attente'}
-                      </p>
-                    </div>
-                    {index < steps.length - 1 && (
-                      <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+          <CardContent className="h-[500px] p-0 bg-black rounded-lg">
+            <RadialOrbitalTimeline timelineData={timelineData} />
           </CardContent>
         </Card>
       )}
