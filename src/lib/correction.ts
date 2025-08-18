@@ -379,60 +379,66 @@ export function testPipelineAlgorithm(): void {
 
 
 // --- NOUVELLE LOGIQUE DE CORRECTION VIA L'API GOOGLE GEMINI ---
-import { correctLabels as correctLabelsWithGeminiAPI } from './ai-correction';
+import { correctLabel as correctLabelWithGeminiAPI } from './ai-correction';
 
 /**
- * Corrige une liste de libellés en utilisant le service Google Gemini.
+ * Corrige une liste de libellés en utilisant le service Google Gemini, un par un.
  * C'est la fonction de pont entre l'UI et le service IA.
  * @param labels La liste des libellés à corriger.
  * @param apiKey La clé API Google fournie par l'utilisateur.
+ * @param onProgress Callback pour suivre la progression.
  * @returns Une promesse qui se résout en un tableau de CorrectionResult.
  */
-export async function correctLabelsWithGemini(labels: string[], apiKey: string): Promise<CorrectionResult[]> {
+export async function correctLabelsWithGemini(
+  labels: string[],
+  apiKey: string,
+  onProgress?: (progress: number) => void
+): Promise<CorrectionResult[]> {
   if (!labels || labels.length === 0) {
     return [];
   }
 
   if (!apiKey) {
-    // Cette erreur sera interceptée et affichée dans l'UI.
     throw new Error("La clé API n'a pas été fournie.");
   }
 
-  try {
-    const aiResults = await correctLabelsWithGeminiAPI(labels, apiKey);
+  const results: CorrectionResult[] = [];
+  const total = labels.length;
 
-    // Mapper les résultats de l'IA au format attendu par le frontend
-    return labels.map(originalLabel => {
-      const matchingAiResult = aiResults.find(res => res["Libellé Original"] === originalLabel);
+  for (let i = 0; i < total; i++) {
+    const label = labels[i];
+    try {
+      const aiResult = await correctLabelWithGeminiAPI(label, apiKey);
 
-      if (matchingAiResult && matchingAiResult["Libellé Corrigé"]) {
-        return {
-          original: originalLabel,
-          corrected: matchingAiResult["Libellé Corrigé"],
-          rules: ['gemini_correction'],
-          confidence: 95, // Confiance élevée pour une correction IA réussie
-        };
-      } else {
-        // Si l'IA n'a pas retourné de correction pour ce libellé
-        return {
-          original: originalLabel,
-          corrected: originalLabel, // Retourner l'original
-          rules: ['gemini_failure'],
-          confidence: 10, // Confiance faible
-        };
+      results.push({
+        original: label,
+        corrected: aiResult["Libellé Corrigé"],
+        rules: ['gemini_correction'],
+        confidence: 95,
+      });
+
+      // Mettre à jour la progression
+      if (onProgress) {
+        onProgress(((i + 1) / total) * 100);
       }
-    });
 
-  } catch (error) {
-    console.error("Erreur lors de l'appel au service de correction Gemini:", error);
-    // En cas d'échec (ex: clé API manquante), retourner les originaux avec confiance nulle
-    return labels.map(label => ({
-      original: label,
-      corrected: label,
-      rules: ['api_error', error.message],
-      confidence: 0,
-    }));
+      // Petite pause pour éviter les rate limits
+      if (i < total - 1) {
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+
+    } catch (error) {
+      console.error(`Erreur lors de la correction du libellé "${label}":`, error);
+      results.push({
+        original: label,
+        corrected: label, // En cas d'erreur sur un item, on retourne l'original
+        rules: ['api_error', error.message],
+        confidence: 0,
+      });
+    }
   }
+
+  return results;
 }
 
 

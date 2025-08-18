@@ -27,6 +27,7 @@ const CorrectionService: React.FC = () => {
   const [isAiMode, setIsAiMode] = useState(false);
   const [apiKey, setApiKey] = useState('');
   const [apiKeyError, setApiKeyError] = useState('');
+  const [progress, setProgress] = useState(0);
 
   // Charger la configuration depuis le localStorage au montage
   useEffect(() => {
@@ -55,6 +56,7 @@ const CorrectionService: React.FC = () => {
     
     setIsProcessing(true);
     setResults([]); // Vider les anciens résultats
+    setProgress(0);
     
     try {
       const labels = inputText
@@ -66,10 +68,11 @@ const CorrectionService: React.FC = () => {
 
       if (isAiMode) {
         // Mode IA
-        correctionResults = await correctLabelsWithGemini(labels, apiKey);
+        correctionResults = await correctLabelsWithGemini(labels, apiKey, setProgress);
       } else {
         // Mode Hors ligne
         correctionResults = labels.map(label => correctLabelOffline(label));
+        setProgress(100); // Simuler la progression pour le mode hors ligne
       }
 
       setResults(correctionResults);
@@ -415,6 +418,13 @@ const CorrectionService: React.FC = () => {
                 )}
               </Button>
               
+              {isProcessing && (
+                <div className="space-y-1">
+                  <Progress value={progress} className="w-full" />
+                  <p className="text-xs text-muted-foreground text-center">{Math.round(progress)}%</p>
+                </div>
+              )}
+
               {inputText.trim() && (
                 <p className="text-xs text-muted-foreground">
                   {inputText.split('\n').filter(line => line.trim()).length} libellé(s) à traiter
