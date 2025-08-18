@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { Button } from '../ui/button';
+import { StarBorder } from '../ui/star-border';
 import { BorderBeam } from '../ui/border-beam';
 import { Textarea } from '../ui/textarea';
 import { Input } from '../ui/input';
@@ -337,7 +338,7 @@ const CorrectionService: React.FC = () => {
                   }}
                   placeholder="Saisissez votre clé API ici..."
                 />
-                <Button onClick={() => {
+                <StarBorder onClick={() => {
                   if (apiKey && apiKey.startsWith('AIza')) {
                     localStorage.setItem('googleApiKey', apiKey);
                     setApiKeyError('');
@@ -348,7 +349,7 @@ const CorrectionService: React.FC = () => {
                 }}>
                   <Save className="h-4 w-4 mr-2" />
                   Sauvegarder
-                </Button>
+                </StarBorder>
               </div>
               {apiKeyError && <p className="text-sm text-destructive">{apiKeyError}</p>}
             </div>
@@ -397,7 +398,7 @@ const CorrectionService: React.FC = () => {
                 />
               </div>
               
-              <Button 
+              <StarBorder
                 onClick={handleCorrection}
                 disabled={!inputText.trim() || isProcessing}
                 className="w-full"
@@ -413,7 +414,7 @@ const CorrectionService: React.FC = () => {
                     Corriger
                   </>
                 )}
-              </Button>
+              </StarBorder>
               
               {inputText.trim() && (
                 <p className="text-xs text-muted-foreground">

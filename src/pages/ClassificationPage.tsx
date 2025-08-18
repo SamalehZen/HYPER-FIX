@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Layout } from '../components/layout/Layout';
 import { HeroSection } from '../components/layout/HeroSection';
 import { Button } from '../components/ui/button';
+import { StarBorder } from '../components/ui/star-border';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
@@ -162,7 +163,7 @@ const ClassificationPage: React.FC = () => {
           </Card>
 
           <div className="flex justify-center">
-            <Button onClick={handleClassify} disabled={isLoading}>
+            <StarBorder onClick={handleClassify} disabled={isLoading}>
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -171,7 +172,7 @@ const ClassificationPage: React.FC = () => {
               ) : (
                 'Lancer la Classification'
               )}
-            </Button>
+            </StarBorder>
           </div>
 
           {error && (

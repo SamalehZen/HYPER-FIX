@@ -2,6 +2,7 @@ import React from "react";
 import { Layout } from "../components/layout/Layout";
 import { HeroSection } from "../components/layout/HeroSection";
 import { Button } from "@/components/ui/button";
+import { StarBorder } from "@/components/ui/star-border";
 import { ArrowRight, Cpu, Database, BarChart3, Shield, Zap, Target } from "lucide-react";
 import { useNavigate } from "../lib/router";
 import { useTheme } from "../lib/theme-context";
@@ -21,16 +22,12 @@ export default function HomePage() {
         description="Correction, classification, et nomenclature douanière — tout en une plateforme sécurisée."
       >
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mt-8">
-          <Button
-            size="lg"
-            className={`group font-medium ${theme === 'dark'
-              ? 'bg-[#c8b4a0] hover:bg-[#a89080] text-[#1a1d18]'
-              : 'bg-[#6b5545] hover:bg-[#544237] text-[#f8f7f5]'}`}
+          <StarBorder
             onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })}
           >
             Découvrir nos services
             <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
-          </Button>
+          </StarBorder>
           <Button
             variant="outline"
             size="lg"
@@ -227,16 +224,12 @@ export default function HomePage() {
           </div>
 
           <div className="text-center mt-12">
-            <Button
-              size="lg"
-              className={`font-medium ${theme === 'dark'
-                ? 'bg-[#c8b4a0] hover:bg-[#a89080] text-[#1a1d18]'
-                : 'bg-[#6b5545] hover:bg-[#544237] text-[#f8f7f5]'}`}
+            <StarBorder
               onClick={() => navigate('/service/correction-libelle')}
             >
               Commencer le workflow complet
               <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            </StarBorder>
           </div>
         </div>
       </section>
@@ -297,16 +290,12 @@ export default function HomePage() {
             dès aujourd'hui avec l'intelligence artificielle.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button
-              size="lg"
-              className={`font-medium ${theme === 'dark'
-                ? 'bg-[#c8b4a0] hover:bg-[#a89080] text-[#1a1d18]'
-                : 'bg-[#6b5545] hover:bg-[#544237] text-[#f8f7f5]'}`}
+            <StarBorder
               onClick={() => navigate('/service/correction-libelle')}
             >
               Commencer maintenant
               <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+            </StarBorder>
             <Button
               variant="outline"
               size="lg"
