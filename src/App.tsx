@@ -7,6 +7,7 @@ import ClassificationPage from "./pages/ClassificationPage";
 import NomenclaturePage from "./pages/NomenclaturePage";
 import WorkflowPage from "./pages/WorkflowPage";
 import ComingSoonPage from "./pages/ComingSoonPage";
+import HeroTemplatePage from "./pages/HeroTemplatePage";
 // Import des autres pages (à créer)
 // import LoginPage from "./pages/LoginPage";
 // import DashboardPage from "./pages/DashboardPage";
@@ -37,6 +38,11 @@ const routes = [
     path: "/workflow",
     component: WorkflowPage,
     title: "Workflow Intégré - L'HyperFix"
+  },
+  {
+    path: "/hero-template",
+    component: HeroTemplatePage,
+    title: "Hero Template - L'HyperFix"
   },
   // Autres routes à ajouter progressivement
   // {
