@@ -26,6 +26,8 @@ export function Navigation({ currentPage = "home" }: NavigationProps) {
     { path: "/service/classification", label: "Classification", id: "classification" },
     { path: "/service/nomenclature-douaniere", label: "Nomenclature", id: "nomenclature" },
     { path: "/dashboard", label: "Dashboard", id: "dashboard" },
+    // Temporary link to showcase the new hero template
+    { path: "/hero-template", label: "Hero Template", id: "hero-template" },
   ];
 
   const handleNavigation = (item: typeof navigationItems[0]) => {
